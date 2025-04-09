@@ -4,6 +4,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { GlobalProvider } from "@/context/GlobalContext";
 import { Toaster } from "react-hot-toast";
 import { toasterConfig } from "@/utils/toasterConfig";
+import { GlobalLoading } from "@/components/ui/loading";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
       >
         <GlobalProvider>
           <AuthProvider>
+            <GlobalLoading />
             {children}
           </AuthProvider>
         </GlobalProvider>

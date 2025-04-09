@@ -18,10 +18,10 @@ export default function Home() {
               </p>
               <div className="mt-10 flex items-center gap-x-6">
                 <Link
-                  href="/productos"
+                  href="/examples/loading"
                   className="rounded-md bg-pink-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
                 >
-                  Ver productos
+                  Ver ejemplos de carga
                 </Link>
                 <Link
                   href="/auth/register"
