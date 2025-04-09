@@ -2,41 +2,16 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { generarCodigo, enviarEmailConfirmacion } from '@/utils/auth';
-
-// Función helper para validar el email
-const validarEmail = (email) => {
-  const regex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
-  return regex.test(String(email).toLowerCase());
-};
+import { validateUserRegistration } from '@/middleware/validateUser';
 
 /**
- * Manejador POST para el registro de usuarios
+ * Controlador para manejar el registro de usuario
  */
-export async function POST(request) {
-  // Conectar a MongoDB
+async function registrar(request, validatedData) {
   await connectDB();
 
   try {
-    // Obtener los datos del cuerpo de la solicitud
-    const body = await request.json();
-    const { firstName, lastName, email, password } = body;
-
-    // Validaciones básicas
-    const errores = [];
-    if (!firstName) errores.push({ campo: 'firstName', mensaje: 'El nombre es obligatorio' });
-    if (!lastName) errores.push({ campo: 'lastName', mensaje: 'El apellido es obligatorio' });
-    if (!email) errores.push({ campo: 'email', mensaje: 'El email es obligatorio' });
-    else if (!validarEmail(email)) errores.push({ campo: 'email', mensaje: 'El formato del email no es válido' });
-    if (!password) errores.push({ campo: 'password', mensaje: 'La contraseña es obligatoria' });
-    else if (password.length < 6) errores.push({ campo: 'password', mensaje: 'La contraseña debe tener al menos 6 caracteres' });
-
-    // Si hay errores, devolver una respuesta de error
-    if (errores.length > 0) {
-      return NextResponse.json(
-        { success: false, msg: 'Errores de validación', errors: errores }, 
-        { status: 400 }
-      );
-    }
+    const { firstName, lastName, email, password } = validatedData;
 
     // Verificar si el usuario ya existe
     const usuarioExistente = await User.findOne({ email });
@@ -49,7 +24,10 @@ export async function POST(request) {
 
     // Crear el nuevo usuario
     const nuevoUsuario = new User({
-      ...body,
+      firstName,
+      lastName,
+      email,
+      password,
       token: generarCodigo(),
       estado: true // Establecer estado activo por defecto
     });
@@ -92,4 +70,25 @@ export async function POST(request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Manejador POST para el registro de usuarios
+ * Simula el comportamiento de Express: userRoutes.post('/registrar', validateUserRegistration, registrar);
+ */
+export async function POST(request) {
+  // 1. Primero validamos los datos (middleware)
+  const clonedRequest = request.clone(); // Clonamos la request porque solo se puede leer una vez
+  const validationResult = await validateUserRegistration(clonedRequest);
+  
+  // 2. Si la validación falla, devolvemos los errores
+  if (!validationResult.success) {
+    return NextResponse.json(
+      { success: false, msg: 'Errores de validación', errors: validationResult.errors }, 
+      { status: validationResult.status }
+    );
+  }
+  
+  // 3. Si la validación es exitosa, procedemos con el registro (controlador)
+  return registrar(request, validationResult.body);
 }
