@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/context/AuthContext';
+import Cookies from 'js-cookie';
 
 export default function useProductos() {
   const [productos, setProductos] = useState([]);
@@ -12,6 +14,15 @@ export default function useProductos() {
     paginaActual: 1,
     porPagina: 10
   });
+  
+  // Usar el contexto de autenticación
+  const { isAuthenticated } = useAuth();
+  
+  // Función para obtener el token de forma segura
+  const getAuthToken = () => {
+    // Priorizar la cookie sobre localStorage
+    return Cookies.get('token') || null;
+  };
 
   // Obtener lista paginada de productos
   const obtenerProductos = async (filtros = {}) => {
@@ -79,17 +90,25 @@ export default function useProductos() {
       setLoading(true);
       setError(null);
       
+      // Obtener token de forma segura
+      const token = getAuthToken();
+      
+      if (!token) {
+        throw new Error('No estás autenticado. Por favor, inicia sesión para realizar esta acción.');
+      }
+      
       const response = await fetch('/api/productos', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(datosProducto)
       });
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Error al crear el producto');
+        throw new Error(error.error || error.msg || 'Error al crear el producto');
       }
       
       const productoCreado = await response.json();
@@ -111,17 +130,25 @@ export default function useProductos() {
       setLoading(true);
       setError(null);
       
+      // Obtener token de forma segura
+      const token = getAuthToken();
+      
+      if (!token) {
+        throw new Error('No estás autenticado. Por favor, inicia sesión para realizar esta acción.');
+      }
+      
       const response = await fetch(`/api/productos/${id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(datosProducto)
       });
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Error al actualizar el producto');
+        throw new Error(error.error || error.msg || 'Error al actualizar el producto');
       }
       
       const productoActualizado = await response.json();
@@ -147,8 +174,18 @@ export default function useProductos() {
       setLoading(true);
       setError(null);
       
+      // Obtener token de forma segura
+      const token = getAuthToken();
+      
+      if (!token) {
+        throw new Error('No estás autenticado. Por favor, inicia sesión para realizar esta acción.');
+      }
+      
       const response = await fetch(`/api/productos/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       
       if (!response.ok) {

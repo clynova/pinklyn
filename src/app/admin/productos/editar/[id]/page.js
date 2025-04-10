@@ -10,8 +10,11 @@ import { Toaster } from 'react-hot-toast';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export default function EditarProductoPage({ params }) {
+  // Unwrapping params using React.use() to make it future-compatible
+  const unwrappedParams = React.use(params);
+  const { id } = unwrappedParams;
+  
   const router = useRouter();
-  const { id } = params;
   const { obtenerProductoPorId, actualizarProducto, producto, loading, error } = useProductos();
   
   useEffect(() => {
