@@ -80,5 +80,16 @@ function redirectToLogin(request) {
 
 // Configuración de rutas para las que se debe ejecutar el middleware
 export const config = {
-  matcher: [...protectedRoutes.map(route => `${route}/:path*`), ...adminRoutes.map(route => `${route}/:path*`)]
+  matcher: [
+    // Rutas protegidas
+    '/perfil/:path*',
+    '/perfil/pedidos/:path*',
+    '/perfil/direcciones/:path*',
+    '/perfil/metodos-pago/:path*',
+    // Rutas admin
+    '/admin/:path*',
+    '/admin/productos/:path*',
+    '/admin/pedidos/:path*',
+    '/admin/usuarios/:path*'
+  ]
 };

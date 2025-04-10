@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HiMail } from 'react-icons/hi';
 import { toast } from 'react-hot-toast';
 import TokenInput from '@/components/auth/TokenInput';
 
-const VerificationPage = () => {
+// Componente que usa useSearchParams() envuelto en Suspense
+function VerificationContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const urlEmail = searchParams.get('email');
-    const urlToken = searchParams.get('token');
+    const urlEmail = searchParams?.get('email');
+    const urlToken = searchParams?.get('token');
     
     // Usar parámetros de URL si están disponibles
     const email = urlEmail || '';
@@ -197,6 +198,19 @@ const VerificationPage = () => {
                 </form>
             </div>
         </div>
+    );
+}
+
+// Componente de verificación con Suspense
+const VerificationPage = () => {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+        }>
+            <VerificationContent />
+        </Suspense>
     );
 };
 
