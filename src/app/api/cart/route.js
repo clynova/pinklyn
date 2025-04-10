@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import cartController from '../../../controllers/cartController';
 import mongoose from 'mongoose';
 import { withAuth } from '../../../middleware/auth/authMiddleware';
+import { withDatabase } from '@/middleware/dbConnection';
 
 // Función auxiliar para validar que el ID sea un ObjectId válido
 const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 // GET - Obtener el carrito del usuario actual con verificación de productos
-export const GET = withAuth(async (req) => {
+export const GET = withAuth(withDatabase(async (req) => {
   try {
     // Obtener el ID del usuario directamente de la sesión autenticada
     const userId = req.user._id;
@@ -23,10 +24,10 @@ export const GET = withAuth(async (req) => {
       { status: 500 }
     );
   }
-});
+}));
 
 // POST - Agregar un producto al carrito (versión simplificada)
-export const POST = withAuth(async (req) => {
+export const POST = withAuth(withDatabase(async (req) => {
   try {
     // Obtener el ID del usuario directamente de la sesión autenticada
     const userId = req.user._id;
@@ -86,10 +87,10 @@ export const POST = withAuth(async (req) => {
       { status: 500 }
     );
   }
-});
+}));
 
 // PUT - Actualizar cantidad de un producto en el carrito
-export const PUT = withAuth(async (req) => {
+export const PUT = withAuth(withDatabase(async (req) => {
   try {
     // Obtener el ID del usuario directamente de la sesión autenticada
     const userId = req.user._id;
@@ -135,10 +136,10 @@ export const PUT = withAuth(async (req) => {
       { status: 500 }
     );
   }
-});
+}));
 
 // DELETE - Eliminar un producto del carrito
-export const DELETE = withAuth(async (req) => {
+export const DELETE = withAuth(withDatabase(async (req) => {
   try {
     // Obtener el ID del usuario directamente de la sesión autenticada
     const userId = req.user._id;
@@ -182,4 +183,4 @@ export const DELETE = withAuth(async (req) => {
       { status: 500 }
     );
   }
-});
+}));

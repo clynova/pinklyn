@@ -1,64 +1,48 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import Product from '@/models/Product';
-import mongoose from 'mongoose';
 import { validateProductUpdate } from '@/middleware/validateProduct';
-import { withAuth, withRoles, withOwnerOrAdmin } from '@/middleware/auth/authMiddleware';
-
-// Validar que el ID sea un ObjectID válido
-function isValidObjectId(id) {
-  return mongoose.Types.ObjectId.isValid(id);
-}
+import { withAuth, withRoles } from '@/middleware/auth/authMiddleware';
+import { withDatabase } from '@/middleware/dbConnection';
+import productController from '@/controllers/productController';
 
 // GET /api/productos/[id] - Obtener un producto por ID
-export async function GET(request, { params }) {
+export const GET = withDatabase(async (request, { params }) => {
   try {
-    await connectDB();
-    
     const { id } = params;
     
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { error: 'ID de producto no válido' },
-        { status: 400 }
-      );
+    try {
+      const result = await productController.getProductById(id);
+      return NextResponse.json(result);
+    } catch (error) {
+      // Manejar errores específicos como ID inválido o producto no encontrado
+      if (error.message === 'ID de producto no válido') {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        );
+      } else if (error.message === 'Producto no encontrado') {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 404 }
+        );
+      }
+      throw error; // Propagar otros errores al handler general
     }
-    
-    const producto = await Product.findById(id);
-    
-    if (!producto) {
-      return NextResponse.json(
-        { error: 'Producto no encontrado' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(producto);
   } catch (error) {
     console.error('Error al obtener el producto:', error);
     return NextResponse.json(
-      { error: 'Error al obtener el producto' },
+      { success: false, error: 'Error al obtener el producto' },
       { status: 500 }
     );
   }
-}
+});
 
-// Manejador original para la función PUT
+// Manejador para actualizar un producto
 async function handlePutRequest(request, { params }) {
   try {
-    await connectDB();
-    
     const { id } = params;
     
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { success: false, error: 'ID de producto no válido' },
-        { status: 400 }
-      );
-    }
-    
     // Validar los datos del producto con el middleware
-    const clonedRequest = request.clone(); // Clonamos la request porque solo se puede leer una vez
+    const clonedRequest = request.clone();
     const validationResult = await validateProductUpdate(clonedRequest);
     
     // Si la validación falla, devolver errores
@@ -69,78 +53,35 @@ async function handlePutRequest(request, { params }) {
       );
     }
     
-    const datos = validationResult.body;
-    
-    // Comprobar si el producto existe
-    const productoExistente = await Product.findById(id);
-    if (!productoExistente) {
-      return NextResponse.json(
-        { success: false, error: 'Producto no encontrado' },
-        { status: 404 }
-      );
-    }
-    
-    // Verificar si hay otro producto con el mismo SKU o slug (que no sea este mismo)
-    if (datos.sku || datos.slug) {
-      const condicionesDuplicado = [];
+    // Usar el controlador para actualizar el producto
+    try {
+      const result = await productController.updateProduct(id, validationResult.body);
+      return NextResponse.json(result);
+    } catch (error) {
+      // Manejar errores específicos
+      if (error.type === 'DUPLICATE_ERROR') {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: error.message,
+            errors: error.errors
+          },
+          { status: error.status || 409 }
+        );
+      } else if (error.message === 'ID de producto no válido') {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        );
+      } else if (error.message === 'Producto no encontrado') {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 404 }
+        );
+      }
       
-      if (datos.sku) condicionesDuplicado.push({ sku: datos.sku });
-      if (datos.slug) condicionesDuplicado.push({ slug: datos.slug });
-      
-      if (condicionesDuplicado.length > 0) {
-        const duplicado = await Product.findOne({
-          _id: { $ne: id },
-          $or: condicionesDuplicado
-        });
-        
-        if (duplicado) {
-          return NextResponse.json(
-            { 
-              success: false,
-              error: 'Ya existe otro producto con el mismo SKU o slug',
-              errors: {
-                ...(datos.sku && duplicado.sku === datos.sku ? { sku: 'Este SKU ya está en uso' } : {}),
-                ...(datos.slug && duplicado.slug === datos.slug ? { slug: 'Este slug ya está en uso' } : {})
-              }
-            },
-            { status: 409 }
-          );
-        }
-      }
+      throw error; // Propagar otros errores al handler general
     }
-    
-    // Si actualizan variantes, asegurar que haya una predeterminada
-    if (datos.variantes && Array.isArray(datos.variantes) && datos.variantes.length > 0) {
-      const tienePredeterminada = datos.variantes.some(v => v.esPredeterminada);
-      if (!tienePredeterminada) {
-        datos.variantes[0].esPredeterminada = true;
-      }
-    }
-    
-    // Si actualizan imágenes, asegurar que haya una principal
-    if (datos.multimedia && datos.multimedia.imagenes && 
-        Array.isArray(datos.multimedia.imagenes) && datos.multimedia.imagenes.length > 0) {
-      const tienePrincipal = datos.multimedia.imagenes.some(img => img.esPrincipal);
-      if (!tienePrincipal) {
-        datos.multimedia.imagenes[0].esPrincipal = true;
-      }
-    }
-    
-    // Actualizar fechaActualizacion
-    datos.fechaActualizacion = new Date();
-    
-    // Actualizar el producto
-    const productoActualizado = await Product.findByIdAndUpdate(
-      id,
-      { $set: datos },
-      { new: true, runValidators: true }
-    );
-    
-    return NextResponse.json({
-      success: true,
-      mensaje: 'Producto actualizado correctamente',
-      producto: productoActualizado
-    });
   } catch (error) {
     console.error('Error al actualizar el producto:', error);
     return NextResponse.json(
@@ -150,38 +91,30 @@ async function handlePutRequest(request, { params }) {
   }
 }
 
-// Manejador original para la función DELETE
+// Manejador para eliminar un producto
 async function handleDeleteRequest(request, { params }) {
   try {
-    await connectDB();
-    
     const { id } = params;
     
-    // Validar que el ID sea válido
-    if (!isValidObjectId(id)) {
-      return NextResponse.json(
-        { success: false, error: 'ID de producto no válido' },
-        { status: 400 }
-      );
+    try {
+      const result = await productController.deleteProduct(id);
+      return NextResponse.json(result);
+    } catch (error) {
+      // Manejar errores específicos
+      if (error.message === 'ID de producto no válido') {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 400 }
+        );
+      } else if (error.message === 'Producto no encontrado') {
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 404 }
+        );
+      }
+      
+      throw error; // Propagar otros errores al handler general
     }
-    
-    // Verificar que el producto existe antes de eliminar
-    const productoExistente = await Product.findById(id);
-    if (!productoExistente) {
-      return NextResponse.json(
-        { success: false, error: 'Producto no encontrado' },
-        { status: 404 }
-      );
-    }
-    
-    // Eliminar el producto
-    const productoEliminado = await Product.findByIdAndDelete(id);
-    
-    return NextResponse.json({
-      success: true,
-      mensaje: 'Producto eliminado correctamente',
-      id: productoEliminado._id
-    }, { status: 200 });
   } catch (error) {
     console.error('Error al eliminar el producto:', error);
     return NextResponse.json(
@@ -193,8 +126,8 @@ async function handleDeleteRequest(request, { params }) {
 
 // PUT /api/productos/[id] - Actualizar un producto existente (Con autenticación)
 // Solo usuarios con rol "admin" pueden actualizar productos
-export const PUT = withRoles(handlePutRequest, ['admin']);
+export const PUT = withRoles(withDatabase(handlePutRequest), ['admin']);
 
 // DELETE /api/productos/[id] - Eliminar un producto (Con autenticación)
 // Solo usuarios con rol "admin" pueden eliminar productos
-export const DELETE = withRoles(handleDeleteRequest, ['admin']);
+export const DELETE = withRoles(withDatabase(handleDeleteRequest), ['admin']);
