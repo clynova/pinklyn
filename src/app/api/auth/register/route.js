@@ -1,68 +1,40 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import { generarCodigo, enviarEmailConfirmacion } from '@/utils/auth';
 import { validateUserRegistration } from '@/middleware/validateUser';
+import { withDatabase } from '@/middleware/dbConnection';
+import userController from '@/controllers/userController';
 
 /**
- * Controlador para manejar el registro de usuario
+ * Manejador POST para el registro de usuarios
  */
-async function registrar(request, validatedData) {
-  await connectDB();
-
+export const POST = withDatabase(async (request) => {
   try {
-    const { firstName, lastName, email, password } = validatedData;
-
-    // Verificar si el usuario ya existe
-    const usuarioExistente = await User.findOne({ email });
-    if (usuarioExistente) {
+    // 1. Validamos los datos con el middleware
+    const clonedRequest = request.clone(); // Clonamos la request porque solo se puede leer una vez
+    const validationResult = await validateUserRegistration(clonedRequest);
+    
+    // 2. Si la validación falla, devolvemos los errores
+    if (!validationResult.success) {
       return NextResponse.json(
-        { success: false, msg: 'El correo ya está registrado' }, 
-        { status: 400 }
+        { success: false, msg: 'Errores de validación', errors: validationResult.errors }, 
+        { status: validationResult.status }
       );
     }
-
-    // Crear el nuevo usuario
-    const nuevoUsuario = new User({
-      firstName,
-      lastName,
-      email,
-      password,
-      token: generarCodigo(),
-      estado: true // Establecer estado activo por defecto
-    });
     
-    const userGuardado = await nuevoUsuario.save();
-
-    // Enviar email de confirmación
-    const resultadoEmail = await enviarEmailConfirmacion({
-      firstName: userGuardado.firstName,
-      email: userGuardado.email,
-      token: userGuardado.token
-    });
-
-    if (!resultadoEmail.success) {
-      console.error("Error al enviar el email de confirmación:", resultadoEmail.error);
-      // No devolvemos error al cliente, pero registramos el problema
+    // 3. Si la validación es exitosa, utilizamos el controlador de usuario
+    try {
+      const result = await userController.register(validationResult.body);
+      return NextResponse.json(result, { status: 201 });
+    } catch (error) {
+      // Manejo de errores específicos
+      if (error.type === 'DUPLICATE_EMAIL') {
+        return NextResponse.json(
+          { success: false, msg: error.message },
+          { status: error.status || 409 }
+        );
+      }
+      
+      throw error; // Propagar otros errores al handler general
     }
-
-    // Respuesta al cliente
-    return NextResponse.json(
-      { 
-        success: true, 
-        msg: "Usuario registrado correctamente. Por favor, revisa tu email para confirmar la cuenta.",
-        data: {
-          id: userGuardado._id,
-          firstName: userGuardado.firstName,
-          lastName: userGuardado.lastName,
-          email: userGuardado.email,
-          roles: userGuardado.roles,
-          confirmado: userGuardado.confirmado
-        }
-      },
-      { status: 201 }
-    );
-
   } catch (error) {
     console.error("Error en el registro de usuario:", error);
     return NextResponse.json(
@@ -70,25 +42,4 @@ async function registrar(request, validatedData) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Manejador POST para el registro de usuarios
- * Simula el comportamiento de Express: userRoutes.post('/registrar', validateUserRegistration, registrar);
- */
-export async function POST(request) {
-  // 1. Primero validamos los datos (middleware)
-  const clonedRequest = request.clone(); // Clonamos la request porque solo se puede leer una vez
-  const validationResult = await validateUserRegistration(clonedRequest);
-  
-  // 2. Si la validación falla, devolvemos los errores
-  if (!validationResult.success) {
-    return NextResponse.json(
-      { success: false, msg: 'Errores de validación', errors: validationResult.errors }, 
-      { status: validationResult.status }
-    );
-  }
-  
-  // 3. Si la validación es exitosa, procedemos con el registro (controlador)
-  return registrar(request, validationResult.body);
-}
+});

@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
-import { generarCodigo, enviarEmailConfirmacion } from '@/utils/auth';
+import { withDatabase } from '@/middleware/dbConnection';
+import userController from '@/controllers/userController';
 
 /**
  * Reenvía un nuevo código de verificación al usuario
  */
-export async function POST(request) {
+export const POST = withDatabase(async (request) => {
   try {
-    await connectDB();
-    
     const { email } = await request.json();
     
     if (!email) {
@@ -19,53 +16,43 @@ export async function POST(request) {
       }, { status: 400 });
     }
     
-    // Buscar usuario por email
-    const usuario = await User.findOne({ email });
-    
-    if (!usuario) {
+    try {
+      const result = await userController.resendVerificationCode(email);
+      
+      // En un entorno de desarrollo, devolvemos el token para facilitar pruebas
+      if (process.env.NODE_ENV !== 'production' && result.verificationToken) {
+        return NextResponse.json({
+          success: true,
+          msg: result.message,
+          verificationToken: result.verificationToken // Solo en desarrollo
+        });
+      }
+      
       return NextResponse.json({
-        success: false,
-        msg: "Usuario no encontrado"
-      }, { status: 404 });
+        success: true,
+        msg: result.message
+      });
+    } catch (error) {
+      // Manejo de errores específicos
+      if (error.type === 'USER_NOT_FOUND') {
+        return NextResponse.json({
+          success: false,
+          msg: error.message
+        }, { status: error.status || 404 });
+      } else if (error.type === 'ALREADY_VERIFIED') {
+        return NextResponse.json({
+          success: false,
+          msg: error.message
+        }, { status: error.status || 400 });
+      }
+      
+      throw error; // Propagar otros errores al handler general
     }
-    
-    // Verificar si el usuario ya está confirmado
-    if (usuario.confirmado) {
-      return NextResponse.json({
-        success: false,
-        msg: "La cuenta ya ha sido confirmada"
-      }, { status: 400 });
-    }
-    
-    // Generar nuevo token
-    usuario.token = generarCodigo();
-    await usuario.save();
-    
-    // Enviar email de confirmación
-    const resultadoEmail = await enviarEmailConfirmacion({
-      firstName: usuario.firstName,
-      email: usuario.email,
-      token: usuario.token
-    });
-
-    if (!resultadoEmail.success) {
-      console.error("Error al enviar el email de confirmación:", resultadoEmail.error);
-      return NextResponse.json({
-        success: false,
-        msg: "Error al enviar el código de verificación"
-      }, { status: 500 });
-    }
-    
-    return NextResponse.json({
-      success: true,
-      msg: "Código de verificación enviado correctamente"
-    });
-    
   } catch (error) {
     console.error('Error al reenviar código:', error);
     return NextResponse.json({
       success: false,
-      msg: "Error en el servidor"
+      msg: "Error en el servidor al reenviar el código"
     }, { status: 500 });
   }
-}
+});

@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import TokenBlacklist from '@/models/TokenBlacklist';
 import { cookies } from 'next/headers';
 import { withAuth } from '@/middleware/auth/authMiddleware';
+import { withDatabase } from '@/middleware/dbConnection';
+import userController from '@/controllers/userController';
 
 async function handleLogout(request) {
   try {
-    await connectDB();
-    
     // Obtener el token del header
     let token;
     const authHeader = request.headers.get('authorization');
@@ -17,9 +15,8 @@ async function handleLogout(request) {
     }
     
     if (token) {
-      // Agregar el token a la lista negra
-      const tokenDoc = new TokenBlacklist({ token });
-      await tokenDoc.save();
+      // Usar el controlador para invalidar el token
+      await userController.logout(token);
     }
     
     // Eliminar la cookie del servidor
@@ -39,4 +36,4 @@ async function handleLogout(request) {
   }
 }
 
-export const POST = withAuth(handleLogout);
+export const POST = withAuth(withDatabase(handleLogout));

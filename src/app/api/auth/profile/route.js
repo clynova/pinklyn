@@ -1,53 +1,7 @@
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/middleware/auth/authMiddleware';
-
-/**
- * Manejador para actualizar el perfil del usuario
- */
-async function handleUpdateProfile(request) {
-  try {
-    // El middleware withAuth ya verificó la autenticación y asignó req.user
-    // Obtenemos el usuario autenticado
-    const user = request.user;
-    
-    // Obtenemos los datos del cuerpo de la solicitud
-    const { firstName, lastName, phone } = await request.json();
-    
-    await connectDB();
-    
-    // Actualizamos los datos del usuario
-    const updatedUser = await User.findByIdAndUpdate(
-      user._id,
-      {
-        firstName,
-        lastName,
-        phone
-      },
-      { new: true, runValidators: true }
-    ).select('-password');
-    
-    if (!updatedUser) {
-      return NextResponse.json(
-        { success: false, msg: 'Usuario no encontrado' },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json({
-      success: true, 
-      msg: 'Perfil actualizado correctamente',
-      user: updatedUser
-    }, { status: 200 });
-  } catch (error) {
-    console.error('Error actualizando el perfil:', error);
-    return NextResponse.json(
-      { success: false, msg: 'Error al actualizar el perfil', error: error.message },
-      { status: 500 }
-    );
-  }
-}
+import { withDatabase } from '@/middleware/dbConnection';
+import userController from '@/controllers/userController';
 
 /**
  * Manejador para obtener los datos del perfil
@@ -55,20 +9,64 @@ async function handleUpdateProfile(request) {
 async function handleGetProfile(request) {
   try {
     // El middleware withAuth ya verificó la autenticación y asignó req.user
-    // Simplemente devolvemos el usuario (sin la contraseña)
-    return NextResponse.json({
-      success: true,
-      user: request.user
-    });
+    const userId = request.user._id;
+    
+    try {
+      const result = await userController.getProfile(userId);
+      return NextResponse.json(result);
+    } catch (error) {
+      if (error.type === 'USER_NOT_FOUND') {
+        return NextResponse.json(
+          { success: false, msg: error.message },
+          { status: error.status || 404 }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error obteniendo el perfil:', error);
     return NextResponse.json(
-      { success: false, msg: 'Error al obtener el perfil', error: error.message },
+      { success: false, msg: 'Error al obtener el perfil' },
       { status: 500 }
     );
   }
 }
 
-// Proteger todas las rutas con el middleware de autenticación
-export const GET = withAuth(handleGetProfile);
-export const PUT = withAuth(handleUpdateProfile);
+/**
+ * Manejador para actualizar el perfil del usuario
+ */
+async function handleUpdateProfile(request) {
+  try {
+    // El middleware withAuth ya verificó la autenticación y asignó req.user
+    const userId = request.user._id;
+    const updateData = await request.json();
+    
+    try {
+      const result = await userController.updateProfile(userId, updateData);
+      return NextResponse.json(result);
+    } catch (error) {
+      if (error.type === 'USER_NOT_FOUND') {
+        return NextResponse.json(
+          { success: false, msg: error.message },
+          { status: error.status || 404 }
+        );
+      } else if (error.type === 'INVALID_UPDATE') {
+        return NextResponse.json(
+          { success: false, msg: error.message },
+          { status: error.status || 400 }
+        );
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error actualizando el perfil:', error);
+    return NextResponse.json(
+      { success: false, msg: 'Error al actualizar el perfil' },
+      { status: 500 }
+    );
+  }
+}
+
+// Proteger todas las rutas con el middleware de autenticación y base de datos
+export const GET = withAuth(withDatabase(handleGetProfile));
+export const PUT = withAuth(withDatabase(handleUpdateProfile));
