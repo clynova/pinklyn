@@ -2,9 +2,9 @@
  * Genera un código aleatorio para verificación de email
  * @returns {string} Código aleatorio de 6 dígitos
  */
-export function generarCodigo() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
+export const generarCodigo = () => {
+  return Math.floor(100000 + Math.random() * 900000);
+};
 
 /**
  * Envía un email de confirmación al usuario

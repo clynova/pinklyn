@@ -4,12 +4,15 @@ import { useState } from 'react';
 import { FiUser, FiMail, FiLock } from 'react-icons/fi';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 import InputField from './InputField';
 import SocialAuth from './SocialAuth';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 
 const RegisterForm = () => {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [showPasswordHelp, setShowPasswordHelp] = useState(false);
     const [formData, setFormData] = useState({
@@ -166,13 +169,11 @@ const RegisterForm = () => {
             const data = await response.json();
             
             if (response.ok) {
-                // Registro exitoso, redirigir o mostrar mensaje
-                alert(data.msg);
-                // En un caso real aquí podríamos redirigir a una página de confirmación
-                // router.push('/auth/check-email');
+                // Registro exitoso, redirigir a la página de verificación
+                router.push(`/auth/verificacion?email=${encodeURIComponent(formData.email)}`);
             } else {
                 // Error en el registro
-                alert(data.msg || 'Error al registrar el usuario');
+                toast.error(data.msg || 'Error al registrar el usuario');
                 if (data.errors) {
                     const serverErrors = {};
                     data.errors.forEach(error => {
@@ -183,14 +184,14 @@ const RegisterForm = () => {
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Ocurrió un error durante el registro');
+            toast.error('Ocurrió un error durante el registro');
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleSocialLogin = (provider) => {
-        alert(`Inicio de sesión con ${provider} no implementado`);
+        toast(`Inicio de sesión con ${provider} no implementado`);
         // En un caso real, aquí iría la lógica para autenticación con proveedores sociales
     };
 
