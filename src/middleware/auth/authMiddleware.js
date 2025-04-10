@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import User from '@/models/User';
 import TokenBlacklist from '@/models/TokenBlacklist';
 import connectDB from '@/lib/mongodb';
+import { cookies } from 'next/headers';
 
 /**
  * Middleware para verificar autenticación en rutas de API de Next.js
@@ -12,12 +13,18 @@ import connectDB from '@/lib/mongodb';
 export function withAuth(handler) {
   return async (request, context) => {
     try {
-      // Obtener el token del header
+      // Obtener el token del header de autorización
       let token;
       const authHeader = request.headers.get('authorization');
       
       if (authHeader?.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1].trim();
+      }
+
+      // Si no hay token en el header, intentar obtenerlo de las cookies HTTP-only
+      if (!token) {
+        const cookieStore = cookies();
+        token = cookieStore.get('token')?.value;
       }
 
       if (!token) {

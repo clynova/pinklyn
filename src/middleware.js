@@ -8,6 +8,29 @@ const adminRoutes = ['/admin', '/admin/productos', '/admin/pedidos', '/admin/usu
 const publicRoutes = ['/auth/login', '/auth/register', '/auth/verificacion'];
 
 export function middleware(request) {
+  // Crear respuesta base
+  const response = NextResponse.next();
+  
+  // Añadir encabezados de seguridad
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  
+  // Content-Security-Policy para prevenir XSS
+  response.headers.set(
+    'Content-Security-Policy', 
+    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+  );
+  
+  // Solo establecer HSTS en producción
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+  }
+  
   // Obtener el token del navegador a través de cookies
   const token = request.cookies.get('token')?.value;
   const user = request.cookies.get('user')?.value;
@@ -44,8 +67,8 @@ export function middleware(request) {
     }
   }
   
-  // Si no es una ruta protegida o el usuario está autenticado, continuar normalmente
-  return NextResponse.next();
+  // Si no es una ruta protegida o el usuario está autenticado, continuar con los headers de seguridad
+  return response;
 }
 
 function redirectToLogin(request) {

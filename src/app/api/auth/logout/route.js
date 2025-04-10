@@ -1,49 +1,42 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import TokenBlacklist from '@/models/TokenBlacklist';
+import { cookies } from 'next/headers';
+import { withAuth } from '@/middleware/auth/authMiddleware';
 
-/**
- * POST /api/auth/logout - Cierra la sesión del usuario e invalida su token
- * agregándolo a la lista negra para que no pueda ser utilizado nuevamente
- */
-export async function POST(request) {
+async function handleLogout(request) {
   try {
     await connectDB();
     
-    // Obtener el token del cuerpo de la solicitud
-    const body = await request.json();
-    const { token } = body;
+    // Obtener el token del header
+    let token;
+    const authHeader = request.headers.get('authorization');
     
-    // Validar que se proporcionó un token
-    if (!token) {
-      return NextResponse.json({
-        success: false,
-        msg: 'No se proporcionó un token'
-      }, { status: 400 });
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1].trim();
     }
     
-    // Verificar si el token ya está en la lista negra
-    const tokenExistente = await TokenBlacklist.findOne({ token });
-    if (tokenExistente) {
-      return NextResponse.json({
-        success: true,
-        msg: 'La sesión ya fue cerrada anteriormente'
-      });
+    if (token) {
+      // Agregar el token a la lista negra
+      const tokenDoc = new TokenBlacklist({ token });
+      await tokenDoc.save();
     }
     
-    // Agregar el token a la lista negra
-    await TokenBlacklist.create({ token });
+    // Eliminar la cookie del servidor
+    const cookieStore = cookies();
+    cookieStore.delete('token');
     
-    return NextResponse.json({
-      success: true,
-      msg: 'Sesión cerrada correctamente'
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Sesión cerrada correctamente' 
     });
-    
   } catch (error) {
-    console.error('Error al cerrar sesión:', error);
-    return NextResponse.json({
-      success: false,
-      msg: 'Error al cerrar sesión'
+    console.error('Error en logout:', error);
+    return NextResponse.json({ 
+      success: false, 
+      message: 'Error al cerrar sesión' 
     }, { status: 500 });
   }
 }
+
+export const POST = withAuth(handleLogout);

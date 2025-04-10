@@ -83,9 +83,24 @@ export function AuthProvider({ children }) {
         throw new Error(errorMessage);
       }
 
-      // Guardar tanto en cookies como en localStorage
-      Cookies.set('token', data.token, { expires: 7, path: '/' });
-      Cookies.set('user', JSON.stringify(data.user), { expires: 7, path: '/' });
+      // Guardar token en cookie con configuración de seguridad mejorada
+      Cookies.set('token', data.token, { 
+        expires: 7, 
+        path: '/', 
+        secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+        sameSite: 'strict',
+        // HttpOnly solo se puede establecer desde el servidor
+      });
+      
+      // Para datos de usuario, usar cookies normales (no HttpOnly para accederlos desde JS)
+      Cookies.set('user', JSON.stringify(data.user), { 
+        expires: 7, 
+        path: '/', 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict' 
+      });
+      
+      // Mantener en localStorage solo para compatibilidad (considerar eliminarlo en el futuro)
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       

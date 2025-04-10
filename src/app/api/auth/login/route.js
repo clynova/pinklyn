@@ -3,6 +3,8 @@ import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { generarJWT } from '@/utils/auth';
 import { validateLogin } from '@/middleware/validateLogin';
+import { cookies } from 'next/headers';
+import { authRateLimit } from '@/middleware/rateLimit';
 
 /**
  * Controlador para manejar la autenticación de usuario
@@ -50,22 +52,35 @@ async function autenticar(request, validatedData) {
 
     // Generar JWT
     const token = generarJWT(usuarioExistente._id, usuarioExistente.email);
-
+    
+    // Configurar cookie segura para el token (HttpOnly)
+    const cookieStore = cookies();
+    cookieStore.set('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60, // 7 días en segundos
+      path: '/'
+    });
+    
+    // Configurar cookie para datos de usuario (no HttpOnly para acceder desde JS)
+    const userData = {
+      id: usuarioExistente._id,
+      firstName: usuarioExistente.firstName,
+      lastName: usuarioExistente.lastName,
+      email: usuarioExistente.email,
+      roles: usuarioExistente.roles,
+      confirmado: usuarioExistente.confirmado,
+      estado: usuarioExistente.estado
+    };
+    
     // Respuesta exitosa
     return NextResponse.json(
       {
         success: true,
         msg: "Autenticación exitosa",
-        token,
-        user: {
-          id: usuarioExistente._id,
-          firstName: usuarioExistente.firstName,
-          lastName: usuarioExistente.lastName,
-          email: usuarioExistente.email,
-          roles: usuarioExistente.roles,
-          confirmado: usuarioExistente.confirmado,
-          estado: usuarioExistente.estado
-        }
+        token, // Se mantiene para compatibilidad con el frontend actual
+        user: userData
       },
       { status: 200 }
     );
@@ -82,7 +97,13 @@ async function autenticar(request, validatedData) {
  * Manejador POST para la autenticación de usuarios
  */
 export async function POST(request) {
-  // 1. Primero validamos los datos (middleware)
+  // Aplicar rate limiting primero
+  const rateLimitResponse = await authRateLimit()(request, {});
+  if (rateLimitResponse.status === 429) {
+    return rateLimitResponse;
+  }
+  
+  // 1. Validamos los datos (middleware)
   const clonedRequest = request.clone(); // Clonamos la request porque solo se puede leer una vez
   const validationResult = await validateLogin(clonedRequest);
   
