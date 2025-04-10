@@ -43,11 +43,8 @@ class UserController {
         ...userData,
         email: userData.email.toLowerCase(),
         password: hashedPassword,
-        verification: {
-          token: verificationToken,
-          expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
-          verified: false
-        }
+        token: verificationToken,
+        confirmado: false
       });
 
       await newUser.save();
@@ -90,8 +87,8 @@ class UserController {
         };
       }
 
-      // Verificar si el usuario está verificado
-      if (!user.verification.verified) {
+      // Verificar si el usuario está verificado (usando confirmado en lugar de verification.verified)
+      if (!user.confirmado) {
         throw {
           type: 'UNVERIFIED_USER',
           message: 'Por favor verifica tu cuenta antes de iniciar sesión',
@@ -145,7 +142,7 @@ class UserController {
   async verifyAccount(token) {
     try {
       // Buscar usuario con el token de verificación
-      const user = await User.findOne({ 'verification.token': token });
+      const user = await User.findOne({ token });
 
       if (!user) {
         throw {
@@ -155,19 +152,9 @@ class UserController {
         };
       }
 
-      // Verificar si el token ha expirado
-      if (user.verification.expires < new Date()) {
-        throw {
-          type: 'EXPIRED_TOKEN',
-          message: 'El token de verificación ha expirado',
-          status: 400
-        };
-      }
-
       // Verificar la cuenta
-      user.verification.verified = true;
-      user.verification.token = undefined;
-      user.verification.expires = undefined;
+      user.confirmado = true;
+      user.token = null; // Eliminamos el token después de usarlo
       
       await user.save();
 
@@ -203,7 +190,7 @@ class UserController {
       }
 
       // Verificar si la cuenta ya está verificada
-      if (user.verification.verified) {
+      if (user.confirmado) {
         throw {
           type: 'ALREADY_VERIFIED',
           message: 'La cuenta ya está verificada',
@@ -214,9 +201,8 @@ class UserController {
       // Generar nuevo token de verificación
       const verificationToken = generateVerificationToken();
       
-      // Actualizar token y fecha de expiración
-      user.verification.token = verificationToken;
-      user.verification.expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+      // Actualizar token
+      user.token = verificationToken;
       
       await user.save();
 
