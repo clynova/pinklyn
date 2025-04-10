@@ -32,7 +32,7 @@ const EsquemaProductoBase = new Schema({
     },
     estado: {
         type: Boolean,
-        default: true // Cambiado a true para que los productos estén disponibles por defecto
+        default: true
     },
     descripcion: {
         corta: {
@@ -42,7 +42,7 @@ const EsquemaProductoBase = new Schema({
         completa: {
             type: String
         },
-        caracteristicasDestacadas: [String] // Nueva propiedad para destacar características únicas
+        caracteristicasDestacadas: [String]
     },
     multimedia: {
         imagenes: [{
@@ -57,7 +57,7 @@ const EsquemaProductoBase = new Schema({
             },
             orden: {
                 type: Number,
-                default: 0 // Nuevo campo para ordenar las imágenes
+                default: 0
             }
         }],
         video: String
@@ -69,17 +69,17 @@ const EsquemaProductoBase = new Schema({
             maxlength: 160
         },
         palabrasClave: [String],
-        pageTitle: String // Nuevo campo para el título de la página
+        pageTitle: String
     },
     infoAdicional: {
         origen: String,
-        artesano: String, // Nuevo campo para destacar al creador/artesano
-        marca: String,    // Para productos genéricos
-        proveedor: String, // Para productos genéricos
+        artesano: String,
+        marca: String,
+        proveedor: String,
         certificaciones: [String]
     },
     conservacion: {
-        instrucciones: String // Simplificado para productos no perecederos
+        instrucciones: String
     },
     personalizacion: {
         tipo: {
@@ -87,10 +87,10 @@ const EsquemaProductoBase = new Schema({
             enum: TipoPersonalizacion,
             default: 'NINGUNO'
         },
-        detalles: String // Detalles sobre cómo se puede personalizar el producto
+        detalles: String
     },
     variantes: [{
-        nombre: String, // Por ejemplo, "Tamaño Grande", "Color Azul"
+        nombre: String,
         precio: Number,
         descuento: {
             type: Number,
@@ -132,73 +132,7 @@ const EsquemaProductoBase = new Schema({
     fechaActualizacion: { type: Date, default: Date.now }
 }, {
     timestamps: { createdAt: 'fechaCreacion', updatedAt: 'fechaActualizacion' },
-    discriminatorKey: 'tipoProducto',
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-    id: false
-});
-
-// Virtual para seleccionar automáticamente una variante predeterminada
-EsquemaProductoBase.virtual('variantePredeterminada').get(function() {
-    // Primero buscamos una variante marcada explícitamente como predeterminada
-    let predeterminada = this.variantes.find(variante => variante.esPredeterminada);
-    
-    // Si no hay ninguna marcada como predeterminada, tomamos la primera disponible con stock
-    if (!predeterminada) {
-        predeterminada = this.variantes.find(variante => variante.stockDisponible > 0);
-    }
-    
-    // Si tampoco hay con stock, simplemente tomamos la primera
-    if (!predeterminada && this.variantes.length > 0) {
-        predeterminada = this.variantes[0];
-    }
-    
-    return predeterminada || null;
-});
-
-// Virtual que calcula el precio con descuento para cada variante
-EsquemaProductoBase.virtual('variantesConPrecioFinal').get(function() {
-    return this.variantes.map(variante => {
-        const precioConDescuento = variante.descuento > 0 
-            ? variante.precio - (variante.precio * variante.descuento / 100)
-            : variante.precio;
-            
-        return {
-            ...variante.toObject(),
-            precioFinal: parseFloat(precioConDescuento.toFixed(2)),
-            tieneDescuento: variante.descuento > 0
-        };
-    });
-});
-
-// Método para obtener el precio final de una variante específica por su ID
-EsquemaProductoBase.methods.calcularPrecioFinal = function(varianteId) {
-    const variante = this.variantes.id(varianteId);
-    if (!variante) return null;
-    
-    const precioConDescuento = variante.descuento > 0 
-        ? variante.precio - (variante.precio * variante.descuento / 100)
-        : variante.precio;
-        
-    return parseFloat(precioConDescuento.toFixed(2));
-};
-
-// Pre-save hook para garantizar que solo una variante sea la predeterminada
-EsquemaProductoBase.pre('save', function(next) {
-    // Si hay al menos una variante marcada como predeterminada, nos aseguramos que sea solo una
-    const predeterminadas = this.variantes.filter(v => v.esPredeterminada);
-    
-    if (predeterminadas.length > 1) {
-        // Si hay más de una, dejamos solo la primera como predeterminada
-        for (let i = 1; i < predeterminadas.length; i++) {
-            predeterminadas[i].esPredeterminada = false;
-        }
-    } else if (this.variantes.length > 0 && predeterminadas.length === 0) {
-        // Si no hay ninguna predeterminada pero hay variantes, establecemos la primera como predeterminada
-        this.variantes[0].esPredeterminada = true;
-    }
-    
-    next();
+    discriminatorKey: 'tipoProducto'
 });
 
 const Product = mongoose.models.Product || mongoose.model('Product', EsquemaProductoBase);
