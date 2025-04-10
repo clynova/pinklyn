@@ -107,11 +107,11 @@ export default function ProductosPage() {
   };
   
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
       <Toaster position="top-right" />
       
       <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Gestión de Productos</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">Gestión de Productos</h1>
         <Link 
           href="/admin/productos/crear" 
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md inline-flex items-center"
@@ -121,7 +121,7 @@ export default function ProductosPage() {
       </div>
       
       {/* Filtros */}
-      <div className="bg-white shadow rounded-lg p-6 mb-8">
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Búsqueda */}
           <div className="md:col-span-1">
@@ -132,11 +132,11 @@ export default function ProductosPage() {
                   placeholder="Buscar productos..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
                 <button
                   type="submit"
-                  className="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-blue-600"
+                  className="absolute right-0 top-0 h-full px-4 text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
                 >
                   <FaSearch />
                 </button>
@@ -149,7 +149,7 @@ export default function ProductosPage() {
             <select
               value={filtros.categoria}
               onChange={handleFiltroCategoria}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">Todas las categorías</option>
               <option value="ARTE">Arte</option>
@@ -166,7 +166,7 @@ export default function ProductosPage() {
             <select
               value={filtros.estado}
               onChange={handleFiltroEstado}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">Todos los estados</option>
               <option value="true">Activos</option>
@@ -182,7 +182,7 @@ export default function ProductosPage() {
           <LoadingSpinner />
         </div>
       ) : error ? (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 dark:bg-red-900 dark:text-red-300">
           <p>{error}</p>
         </div>
       ) : (
@@ -197,7 +197,7 @@ export default function ProductosPage() {
           {/* Paginación */}
           {paginacion.paginas > 1 && (
             <div className="flex justify-between items-center mt-6">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 Mostrando {((paginacion.paginaActual - 1) * paginacion.porPagina) + 1} a {Math.min(paginacion.paginaActual * paginacion.porPagina, paginacion.total)} de {paginacion.total} productos
               </div>
               
@@ -205,7 +205,7 @@ export default function ProductosPage() {
                 <button
                   onClick={() => handleCambioPagina(1)}
                   disabled={paginacion.paginaActual === 1}
-                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === 1 ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === 1 ? 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800'}`}
                 >
                   Primera
                 </button>
@@ -213,7 +213,7 @@ export default function ProductosPage() {
                 <button
                   onClick={() => handleCambioPagina(paginacion.paginaActual - 1)}
                   disabled={paginacion.paginaActual === 1}
-                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === 1 ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === 1 ? 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800'}`}
                 >
                   Anterior
                 </button>
@@ -230,7 +230,7 @@ export default function ProductosPage() {
                       <button
                         key={i}
                         onClick={() => handleCambioPagina(i + 1)}
-                        className={`px-3 py-1 rounded-md ${i + 1 === paginacion.paginaActual ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                        className={`px-3 py-1 rounded-md ${i + 1 === paginacion.paginaActual ? 'bg-blue-600 text-white dark:bg-blue-700' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800'}`}
                       >
                         {i + 1}
                       </button>
@@ -243,7 +243,7 @@ export default function ProductosPage() {
                     i === paginacion.paginaActual - 3 || // Antes del grupo alrededor de la página actual
                     i === paginacion.paginaActual + 1 // Después del grupo alrededor de la página actual
                   ) {
-                    return <span key={i} className="px-3 py-1">...</span>;
+                    return <span key={i} className="px-3 py-1 dark:text-gray-400">...</span>;
                   }
                   return null;
                 })}
@@ -251,7 +251,7 @@ export default function ProductosPage() {
                 <button
                   onClick={() => handleCambioPagina(paginacion.paginaActual + 1)}
                   disabled={paginacion.paginaActual === paginacion.paginas}
-                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === paginacion.paginas ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === paginacion.paginas ? 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800'}`}
                 >
                   Siguiente
                 </button>
@@ -259,7 +259,7 @@ export default function ProductosPage() {
                 <button
                   onClick={() => handleCambioPagina(paginacion.paginas)}
                   disabled={paginacion.paginaActual === paginacion.paginas}
-                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === paginacion.paginas ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                  className={`px-3 py-1 rounded-md ${paginacion.paginaActual === paginacion.paginas ? 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800'}`}
                 >
                   Última
                 </button>
@@ -268,6 +268,6 @@ export default function ProductosPage() {
           )}
         </>
       )}
-    </div>
+    </>
   );
 }

@@ -6,7 +6,6 @@ import Image from "next/image";
 import { HiMenuAlt3, HiX, HiSearch } from "react-icons/hi";
 import { useAuth } from "@/context/AuthContext";
 import UserDropdown from './UserDropdown';
-import { AboutDropdown } from "./AboutDropdown";
 import Navigation from "./Navigation";
 
 /**
@@ -52,7 +51,6 @@ const Navbar = () => {
         </div>
         <div className="flex flex-col space-y-4">
           <Navigation links={navLinks} onMobileClick={() => setIsMenuOpen(false)} />
-          <AboutDropdown />
         </div>
         <div className="border-t border-slate-800 pt-4">
           {!mounted || loading ? (
@@ -157,7 +155,6 @@ const Navbar = () => {
               {!isSearchExpanded ? (
                 <div className="flex space-x-8">
                   <Navigation links={navLinks} />
-                  <AboutDropdown />
                 </div>
               ) : (
                 <div className="w-full max-w-xl px-4">
