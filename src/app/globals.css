@@ -246,6 +246,46 @@ section {
     grid-column: span 2;
     grid-row: span 2;
   }
+  
+  /* Nuevo estilo para mosaico sin espacios en blanco */
+  .mosaic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0;
+    background-color: #f0f0f0; /* Color de fondo para áreas vacías */
+  }
+  
+  /* Estilos específicos para cada tipo de tarjeta en el mosaico */
+  .mosaic-item {
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+    background: linear-gradient(to right, #f5f5f5, #ffffff);
+  }
+  
+  .mosaic-standard {
+    grid-column: span 1;
+    grid-row: span 1;
+    aspect-ratio: 1 / 1;
+  }
+  
+  .mosaic-wide {
+    grid-column: span 2;
+    grid-row: span 1;
+    aspect-ratio: 16 / 9;
+  }
+  
+  .mosaic-tall {
+    grid-column: span 1;
+    grid-row: span 2;
+    aspect-ratio: 9 / 16;
+  }
+  
+  .mosaic-large {
+    grid-column: span 2;
+    grid-row: span 2;
+    aspect-ratio: 1 / 1;
+  }
 
   @media (max-width: 640px) {
     .product-grid {
@@ -258,6 +298,15 @@ section {
     .product-large {
       grid-column: auto;
       grid-row: auto;
+    }
+    
+    /* Ajustes responsive para el nuevo mosaico */
+    .mosaic-grid {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+    
+    .mosaic-item {
+      min-height: 140px;
     }
   }
 }

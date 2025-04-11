@@ -67,8 +67,8 @@ const PanelProductCard = ({
       onMouseLeave={onMouseLeave} // Llama al handler del parent
       className={`
         group relative overflow-hidden rounded-none bg-gray-200
-        transition-all duration-300 ease-in-out /* Transición para todo */
-        ${layoutClasses[layout] || layoutClasses.standard}
+        transition-all duration-300 ease-in-out 
+        w-full h-full block /* Aseguramos que ocupe todo el espacio disponible */
         ${isDimmed
           ? 'filter blur-sm opacity-50 scale-95' // Estilos cuando está difuminado (blur, menos opacidad, ligero encogimiento)
           : 'filter-none opacity-100 scale-100 hover:scale-105' // Estilos normales + efecto hover scale solo si no está difuminado

@@ -137,8 +137,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="container mx-auto px-4 py-12 md:py-16">
-          <h2 className="text-2xl md:text-3xl font-bold mb-8">Productos Destacados</h2>
+        <section className="mx-auto px-4 py-12 md:py-16">
           <PanelCards limit={16} />
         </section>
       </main>
