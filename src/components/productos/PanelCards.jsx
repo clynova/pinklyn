@@ -5,7 +5,7 @@ import PanelProductCard from './PanelProductCard';
 import { getProductsByTags } from '../../services/productService';
 import SkeletonLoader from '../ui/SkeletonLoader';
 
-const PanelCards = ({ products: initialProducts, limit = 10, tag = 'Destacado' }) => {
+const PanelCards = ({ products: initialProducts, limit = 18, tag = 'Destacado' }) => {
   const [products, setProducts] = useState(initialProducts ? initialProducts.slice(0, limit) : []);
   const [loading, setLoading] = useState(!initialProducts);
   const [error, setError] = useState(null);
@@ -184,52 +184,106 @@ const PanelCards = ({ products: initialProducts, limit = 10, tag = 'Destacado' }
 
   return (
     <section className="w-full bg-white">
-      {/* Grid con diseño mejorado que evita espacios en blanco */}
-      <div className="product-grid">
-        {displayProducts.map((product, index) => {
-          const actualProductId = product._id || product.id;
-          const uniqueKey = `${actualProductId}-${index}`;
-          const isDimmed = hoveredProductId !== null && hoveredProductId !== actualProductId;
-          const layout = getLayoutForIndex(index);
+      {/* Grid con diseño mejorado y altura limitada */}
+      <div 
+        className="product-grid" 
+        style={{ 
+          maxHeight: '90vh', /* Limitar la altura al 90% del viewport height */
+          minHeight: '400px', /* Altura mínima para evitar problemas en pantallas pequeñas */
+          overflowY: 'hidden' /* Ocultar lo que exceda la altura máxima */
+        }}
+      >
+        {/* Usamos los productos con un límite específico para mejor control del diseño */}
+        {(() => {
+          // Calculamos cuántas tarjetas necesitamos mostrar para rellenar correctamente el grid
+          const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+          let columnCount = 2; // Móvil por defecto
+          if (windowWidth >= 1280) columnCount = 6;      // xl
+          else if (windowWidth >= 1024) columnCount = 5; // lg
+          else if (windowWidth >= 768) columnCount = 4;  // md
+          else if (windowWidth >= 640) columnCount = 3;  // sm
           
-          // Aplicamos las clases según el layout para el contenedor adecuado
-          const productClass = layout === 'standard' ? '' : 
-                              layout === 'wide' ? 'product-wide' : 
-                              layout === 'tall' ? 'product-tall' : 
-                              'product-large';
+          // Calculamos el número exacto de productos para crear filas completas
+          // Considerando que algunas tarjetas son wide (span 2), esto es aproximado
+          const rowsToShow = 2; // Mostramos solo 2-3 filas para mantener altura controlada
+          
+          // Este cálculo es aproximado: necesitamos más productos de los que cabrían en filas perfectas
+          // porque algunos son wide y ocupan más espacio
+          const productsToShow = Math.min(columnCount * rowsToShow * 1.5, displayProducts.length);
+          
+          return displayProducts.slice(0, productsToShow).map((product, index) => {
+            const actualProductId = product._id || product.id;
+            const uniqueKey = `${actualProductId}-${index}`;
+            const isDimmed = hoveredProductId !== null && hoveredProductId !== actualProductId;
+            
+            // Optimizamos el layout de acuerdo a la posición en el grid
+            // para asegurarnos de no dejar espacios al final
+            let layout;
+            
+            // Para las últimas posiciones, favorecemos los layouts que completan mejor el grid
+            const isLastRow = index >= (productsToShow - columnCount);
+            if (isLastRow) {
+              // En la última fila usamos solo standard para evitar problemas de overflow
+              layout = 'standard';
+            } else {
+              layout = getLayoutForIndex(index);
+            }
+            
+            // Aplicamos las clases según el layout para el contenedor adecuado
+            const productClass = layout === 'standard' ? '' : 
+                                layout === 'wide' ? 'product-wide' : 
+                                layout === 'tall' ? 'product-tall' : 
+                                'product-large';
 
-          return (
-            <div key={uniqueKey} className={`${productClass}`}>
-              <PanelProductCard
-                product={product}
-                productId={actualProductId}
-                layout={layout}
-                isDimmed={isDimmed}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-              />
-            </div>
-          );
-        })}
+            return (
+              <div key={uniqueKey} className={`${productClass}`}>
+                <PanelProductCard
+                  product={product}
+                  productId={actualProductId}
+                  layout={layout}
+                  isDimmed={isDimmed}
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                />
+              </div>
+            );
+          });
+        })()}
         
-        {/* Elementos de relleno sutiles para ocupar espacios vacíos */}
-        {Array.from({ length: 6 }).map((_, i) => {
-          // Alternamos entre espacios estándar y anchos
-          const randomLayout = i % 3 === 0 ? 'wide' : 'standard';
-          const fillerClass = randomLayout === 'wide' ? 'product-wide' : '';
+        {/* Elementos de relleno optimizados para completar perfectamente el grid */}
+        {(() => {
+          // Detectamos las dimensiones actuales de la pantalla
+          const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+          let columnCount = 2; // Móvil por defecto
+          if (windowWidth >= 1440) columnCount = 8;      // xl
+          else if (windowWidth >= 1280) columnCount = 6;      // xl
+          else if (windowWidth >= 1024) columnCount = 5; // lg
+          else if (windowWidth >= 768) columnCount = 4;  // md
+          else if (windowWidth >= 640) columnCount = 3;  // sm
           
-          return (
-            <div 
-              key={`filler-${i}`}
-              className={`${fillerClass} bg-white/40`}
-              style={{ 
-                height: '100%',
-                backgroundImage: `linear-gradient(${Math.floor(Math.random() * 360)}deg, #f9fafb, #ffffff)`,
-                opacity: 0.4
-              }}
-            />
-          );
-        })}
+          // Creamos fillers solo si son necesarios para completar la última fila
+          // o si hay muy pocos productos
+          const productsShown = Math.min(columnCount * 3, displayProducts.length);
+          const remainingSlots = columnCount - (productsShown % columnCount);
+          
+          // Solo añadimos fillers si realmente son necesarios para completar la última fila
+          if (remainingSlots === columnCount) return null; // No necesitamos fillers
+          
+          return Array.from({ length: remainingSlots  + 10 }).map((_, i) => {
+            // Todos los fillers son de tamaño estándar para evitar problemas de layout
+            return (
+              <div 
+                key={`filler-${i}`}
+                className="bg-white"
+                style={{ 
+                  height: '100%',
+                  backgroundImage: `linear-gradient(${Math.floor(Math.random() * 360)}deg, #f9fafb, #ffffff)`,
+                  opacity: 0.05 // Muy sutil, casi invisible
+                }}
+              />
+            );
+          });
+        })()}
       </div>
     </section>
   );
