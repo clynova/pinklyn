@@ -14,22 +14,19 @@ import PropTypes from 'prop-types';
 
 // Función auxiliar para verificar la disponibilidad del producto
 const checkProductAvailability = (product) => {
-  // Verificar si hay al menos un peso estándar activo
-  const hasActiveWeight = product.opcionesPeso?.pesosEstandar?.some(
-    peso => peso.estado !== false && peso.stockDisponible > 0
-  );
-
-  // Verificar variante predeterminada
+  // Verificar la variante predeterminada
   const defaultVariant = product.variantePredeterminada;
-  const firstVariant = product.precioVariantesPorPeso?.[0];
-
+  const variantesList = product.variantesConPrecioFinal || [];
+  
+  // Verificar si hay stock disponible en la variante predeterminada o en alguna de las variantes
+  const hasStockInDefaultVariant = defaultVariant && defaultVariant.stockDisponible > 0;
+  const hasStockInAnyVariant = variantesList.some(v => v.stockDisponible > 0);
+  
   return {
-    isAvailable: hasActiveWeight || product.stock > 0, // Fallback a stock general
-    defaultVariant,
-    firstVariant,
-    finalPrice: hasActiveWeight ? 
-      (defaultVariant?.precioFinal || firstVariant?.precioFinal || product.precio) : 
-      product.precio
+    isAvailable: hasStockInDefaultVariant || hasStockInAnyVariant,
+    defaultVariant: defaultVariant || {},
+    variantesList,
+    finalPrice: defaultVariant?.precioFinal || 0
   };
 };
 
@@ -225,8 +222,8 @@ const ProductCard = ({ product, children }) => {
                 </span>
               </motion.div>
 
-              {/* Weight Badge */}
-              {(variant.peso || product.peso) && (
+              {/* Variant Badge */}
+              {variant.nombre && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -235,7 +232,7 @@ const ProductCard = ({ product, children }) => {
                 >
                   <BsBoxSeam className="w-4 h-4 text-blue-500" />
                   <span className="text-xs font-semibold">
-                    {variant.peso || product.peso}{variant.unidad || product.unidad || 'kg'}
+                    {variant.nombre}
                   </span>
                 </motion.div>
               )}
@@ -271,9 +268,9 @@ const ProductCard = ({ product, children }) => {
                       <span className="text-2xl font-bold text-gray-800 dark:text-white">
                         ${displayPrice?.toFixed(2)}
                       </span>
-                      {(variant.descuento > 0 || product.descuento > 0) && (
+                      {variant.tieneDescuento && (
                         <span className="text-sm text-gray-500 line-through">
-                          ${(variant.precio || product.precioAnterior || 0).toFixed(2)}
+                          ${(variant.precio || 0).toFixed(2)}
                         </span>
                       )}
                     </>
@@ -327,58 +324,88 @@ ProductCard.propTypes = {
   product: PropTypes.shape({
     _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     nombre: PropTypes.string.isRequired,
+    slug: PropTypes.string,
     precio: PropTypes.number,
-    precioAnterior: PropTypes.number,
-    stock: PropTypes.number,
-    descuento: PropTypes.number,
+    categoria: PropTypes.string,
+    estado: PropTypes.bool,
     tipoProducto: PropTypes.string,
+    tags: PropTypes.arrayOf(PropTypes.string),
     descripcion: PropTypes.shape({
       corta: PropTypes.string,
-      completa: PropTypes.string
+      completa: PropTypes.string,
+      caracteristicasDestacadas: PropTypes.arrayOf(PropTypes.string)
     }),
     multimedia: PropTypes.shape({
       imagenes: PropTypes.arrayOf(PropTypes.shape({
         url: PropTypes.string,
         textoAlternativo: PropTypes.string,
         esPrincipal: PropTypes.bool,
+        orden: PropTypes.number,
         _id: PropTypes.string,
+        id: PropTypes.string
       })),
+      video: PropTypes.string
+    }),
+    seo: PropTypes.shape({
+      metaTitulo: PropTypes.string,
+      metaDescripcion: PropTypes.string,
+      palabrasClave: PropTypes.arrayOf(PropTypes.string),
+      pageTitle: PropTypes.string
+    }),
+    infoAdicional: PropTypes.shape({
+      origen: PropTypes.string,
+      artesano: PropTypes.string,
+      marca: PropTypes.string,
+      proveedor: PropTypes.string,
+      certificaciones: PropTypes.arrayOf(PropTypes.string)
     }),
     conservacion: PropTypes.shape({
-      requiereRefrigeracion: PropTypes.bool,
-      requiereCongelacion: PropTypes.bool,
+      instrucciones: PropTypes.string
     }),
-    origen: PropTypes.shape({
-      pais: PropTypes.string,
+    personalizacion: PropTypes.shape({
+      tipo: PropTypes.string,
+      detalles: PropTypes.any
     }),
-    variantePredeterminada: PropTypes.shape({
-      pesoId: PropTypes.string,
-      peso: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-      unidad: PropTypes.string,
+    variantes: PropTypes.arrayOf(PropTypes.shape({
+      nombre: PropTypes.string,
       precio: PropTypes.number,
       descuento: PropTypes.number,
-      precioFinal: PropTypes.number,
       stockDisponible: PropTypes.number,
-      esPredeterminado: PropTypes.bool,
+      umbralStockBajo: PropTypes.number,
       sku: PropTypes.string,
-    }),
-    precioVariantesPorPeso: PropTypes.arrayOf(PropTypes.shape({
-      pesoId: PropTypes.string,
-      peso: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-      unidad: PropTypes.string,
-      precio: PropTypes.number,
-      descuento: PropTypes.number,
-      precioFinal: PropTypes.number,
-      stockDisponible: PropTypes.number,
-      esPredeterminado: PropTypes.bool,
-      sku: PropTypes.string,
+      estado: PropTypes.bool,
+      esPredeterminada: PropTypes.bool,
+      _id: PropTypes.string,
+      ultimaActualizacion: PropTypes.string,
+      id: PropTypes.string
     })),
-    opcionesPeso: PropTypes.shape({
-      pesosEstandar: PropTypes.arrayOf(PropTypes.shape({
-        estado: PropTypes.bool,
-        stockDisponible: PropTypes.number,
-      })),
+    variantePredeterminada: PropTypes.shape({
+      varianteId: PropTypes.string,
+      nombre: PropTypes.string,
+      precio: PropTypes.number,
+      descuento: PropTypes.number,
+      precioFinal: PropTypes.number,
+      stockDisponible: PropTypes.number,
+      esPredeterminada: PropTypes.bool,
+      sku: PropTypes.string
     }),
+    variantesConPrecioFinal: PropTypes.arrayOf(PropTypes.shape({
+      varianteId: PropTypes.string,
+      nombre: PropTypes.string,
+      precio: PropTypes.number,
+      descuento: PropTypes.number,
+      precioFinal: PropTypes.number,
+      tieneDescuento: PropTypes.bool,
+      stockDisponible: PropTypes.number,
+      esPredeterminada: PropTypes.bool,
+      sku: PropTypes.string,
+      estado: PropTypes.bool,
+      ultimaActualizacion: PropTypes.string
+    })),
+    usosRecomendados: PropTypes.arrayOf(PropTypes.string),
+    origen: PropTypes.shape({
+      pais: PropTypes.string
+    })
   }).isRequired,
   children: PropTypes.node,
 };

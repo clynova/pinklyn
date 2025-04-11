@@ -157,11 +157,17 @@ const EsquemaProductoBase = new Schema({
     fechaActualizacion: { type: Date, default: Date.now }
 }, {
     timestamps: { createdAt: 'fechaCreacion', updatedAt: 'fechaActualizacion' },
-    discriminatorKey: 'tipoProducto'
+    discriminatorKey: 'tipoProducto',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
 // Virtual para seleccionar automáticamente una variante predeterminada
 EsquemaProductoBase.virtual('variantePredeterminada').get(function () {
+    if (!this.variantes || this.variantes.length === 0) {
+        return null;
+    }
+    
     // Primero buscamos una variante marcada explícitamente como predeterminada
     let predeterminada = this.variantes.find(variante => variante.esPredeterminada);
 
@@ -174,8 +180,24 @@ EsquemaProductoBase.virtual('variantePredeterminada').get(function () {
     if (!predeterminada && this.variantes.length > 0) {
         predeterminada = this.variantes[0];
     }
-
-    return predeterminada || null;
+    
+    if (!predeterminada) return null;
+    
+    // Calculamos el precio final con descuento
+    const precio = predeterminada.precio;
+    const descuento = predeterminada.descuento || 0;
+    const precioFinal = precio - (precio * descuento / 100);
+    
+    return {
+        varianteId: predeterminada._id,
+        nombre: predeterminada.nombre,
+        precio: precio,
+        descuento: descuento,
+        precioFinal: parseFloat(precioFinal.toFixed(2)),
+        stockDisponible: predeterminada.stockDisponible,
+        esPredeterminada: predeterminada.esPredeterminada,
+        sku: predeterminada.sku
+    };
 });
 
 
@@ -183,15 +205,27 @@ EsquemaProductoBase.virtual('variantePredeterminada').get(function () {
 
 // Virtual que calcula el precio con descuento para cada variante
 EsquemaProductoBase.virtual('variantesConPrecioFinal').get(function () {
+    if (!this.variantes || this.variantes.length === 0) {
+        return [];
+    }
+    
     return this.variantes.map(variante => {
         const precioConDescuento = variante.descuento > 0
             ? variante.precio - (variante.precio * variante.descuento / 100)
             : variante.precio;
 
         return {
-            ...variante.toObject(),
+            varianteId: variante._id,
+            nombre: variante.nombre,
+            precio: variante.precio,
+            descuento: variante.descuento || 0,
             precioFinal: parseFloat(precioConDescuento.toFixed(2)),
-            tieneDescuento: variante.descuento > 0
+            tieneDescuento: variante.descuento > 0,
+            stockDisponible: variante.stockDisponible,
+            esPredeterminada: variante.esPredeterminada,
+            sku: variante.sku,
+            estado: variante.estado,
+            ultimaActualizacion: variante.ultimaActualizacion
         };
     });
 });
