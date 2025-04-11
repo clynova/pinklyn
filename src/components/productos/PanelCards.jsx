@@ -5,22 +5,58 @@ import PanelProductCard from './PanelProductCard';
 import { getProductsByTags } from '../../services/productService';
 import SkeletonLoader from '../ui/SkeletonLoader';
 
+// Approximate row height based on CSS (grid-auto-rows: 280px)
+const APPROX_ROW_HEIGHT = 280;
+// Target viewport height percentage for the container
+const TARGET_VH = 0.8; // 70vh
+
 const PanelCards = ({ products: initialProducts, limit = 18, tag = 'Destacado' }) => {
   const [products, setProducts] = useState(initialProducts ? initialProducts.slice(0, limit) : []);
   const [loading, setLoading] = useState(!initialProducts);
   const [error, setError] = useState(null);
   const [hoveredProductId, setHoveredProductId] = useState(null);
+  const [columnCount, setColumnCount] = useState(5);
+  const [containerHeight, setContainerHeight] = useState(600); // Default height
+
+  const calculateColumnCount = () => {
+    if (typeof window === 'undefined') return 5;
+    const windowWidth = window.innerWidth;
+    if (windowWidth >= 1440) return 8;
+    else if (windowWidth >= 1280) return 6;
+    else if (windowWidth >= 1024) return 5;
+    else if (windowWidth >= 768) return 4;
+    else if (windowWidth >= 640) return 3;
+    else return 2;
+  };
+
+  // Update column count and container height on mount and resize
+  useEffect(() => {
+    const updateLayout = () => {
+      setColumnCount(calculateColumnCount());
+      // Calculate target height in pixels based on viewport
+      const targetPixelHeight = typeof window !== 'undefined' ? window.innerHeight * TARGET_VH : 600;
+      setContainerHeight(targetPixelHeight);
+    };
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => window.removeEventListener('resize', updateLayout);
+  }, []);
+
 
   useEffect(() => {
     const fetchProducts = async () => {
-      if (initialProducts) return;
+      if (initialProducts) {
+         setProducts(initialProducts.slice(0, limit));
+         setLoading(false);
+         return;
+      }
       try {
         setLoading(true);
         setError(null);
         const response = await getProductsByTags(tag, limit);
         if (response.success) {
           const fetchedProducts = response.productos || response.products || [];
-          setProducts(fetchedProducts);
+          setProducts(fetchedProducts.slice(0, limit));
            if (fetchedProducts.length === 0) {
              console.warn(`No se encontraron productos con el tag "${tag}"`);
           }
@@ -39,136 +75,68 @@ const PanelCards = ({ products: initialProducts, limit = 18, tag = 'Destacado' }
     };
     if (!initialProducts) {
        fetchProducts();
-    }
-  }, [limit, tag]); // Removed initialProducts from dependency array as it's handled at init
-
-  // --- Patrón de diseño mosaico artístico mejorado ---
-  // Asigna diferentes tamaños y formas para crear un lienzo visualmente variado sin espacios en blanco
-  const getLayoutForIndex = (index, totalProducts = products.length) => {
-    // Patrones diseñados para encajar perfectamente en bloques completos 
-    // Cada conjunto completa un bloque rectangular sin dejar espacios
-
-    // Patrón A: Para filas de 4 columnas con altura doble (6 tarjetas, 8 espacios)
-    const patternA = [
-      'standard', 'tall', 'standard', 'standard', // Primera fila (4 espacios)
-      'wide',     'standard', 'wide'             // Segunda fila (4 espacios)
-    ];
-
-    // Patrón B: Para filas de 5 columnas con altura doble (10 tarjetas, 10 espacios)
-    const patternB = [
-      'standard', 'standard', 'large', 'standard', // Primera fila (5 espacios)
-      'wide',     'tall',    'standard', 'standard' // Segunda fila (5 espacios)
-    ];
-
-    // Patrón C: Para filas de 3 columnas con altura doble (6 tarjetas, 6 espacios)
-    const patternC = [
-      'wide', 'standard',               // Primera fila (3 espacios)
-      'standard', 'standard', 'standard', // Segunda fila (3 espacios)
-      'standard', 'tall'                 // Tercera fila (parcial)
-    ];
-
-    // Detectamos el ancho probable del grid basado en el número de columnas
-    // que esperamos tener según los diferentes breakpoints de pantalla
-    // Calculamos un número basado en el tamaño aproximado de la ventana (simulación)
-    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    let columnCount = 2; // Móvil por defecto
-
-    if (windowWidth >= 1280) columnCount = 6;      // xl
-    else if (windowWidth >= 1024) columnCount = 5; // lg
-    else if (windowWidth >= 768) columnCount = 4;  // md
-    else if (windowWidth >= 640) columnCount = 3;  // sm
-    
-    // En base al número de columnas y el total de productos disponibles, 
-    // seleccionamos un patrón que se ajuste mejor
-    let selectedPattern;
-    
-    if (columnCount === 2) {
-      // En móvil usamos un patrón simple que alterna entre standard y wide
-      return index % 3 === 0 ? 'wide' : 'standard';
-    } else if (columnCount === 3) {
-      selectedPattern = patternC;
-    } else if (columnCount === 4) {
-      selectedPattern = patternA;
     } else {
-      // 5 o 6 columnas
-      selectedPattern = patternB;
+       setLoading(false);
+       setProducts(currentInitial => currentInitial ? currentInitial.slice(0, limit) : []);
     }
+  }, [limit, tag, initialProducts]);
 
-    // Si el patrón termina, volvemos a comenzar
-    return selectedPattern[index % selectedPattern.length] || 'standard';
+  // --- Mosaic Pattern Logic (unchanged from previous step) ---
+  const getLayoutForIndex = (index, totalProducts) => {
+     const patternA = ['standard', 'tall', 'standard', 'standard', 'wide', 'standard', 'standard', 'standard', 'wide', 'tall'];
+     const patternB = ['standard', 'standard', 'large', 'standard', 'wide', 'tall', 'standard', 'standard', 'standard', 'standard', 'wide', 'standard', 'tall'];
+     const patternC = ['wide', 'standard', 'standard', 'tall', 'standard', 'standard', 'wide'];
+     const patternXL = ['standard', 'tall', 'standard', 'wide', 'standard', 'wide', 'standard', 'standard', 'tall','standard', 'large', 'standard', 'standard', 'wide'];
+     let selectedPattern;
+     if (columnCount <= 2) return index % 3 === 0 ? 'wide' : 'standard';
+     else if (columnCount === 3) selectedPattern = patternC;
+     else if (columnCount === 4) selectedPattern = patternA;
+     else if (columnCount === 5) selectedPattern = patternB;
+     else selectedPattern = patternXL;
+     return selectedPattern[index % selectedPattern.length] || 'standard';
   };
 
-  const handleMouseEnter = (productId) => {
-    setHoveredProductId(productId);
-  };
+  const handleMouseEnter = (productId) => setHoveredProductId(productId);
+  const handleMouseLeave = () => setHoveredProductId(null);
 
-  const handleMouseLeave = () => {
-    setHoveredProductId(null);
-  };
-
-  // --- Create displayProducts array with enhanced repetition logic ---
+  // --- Create displayProducts for bounded container ---
   let displayProducts = [];
   if (!loading && products.length > 0) {
-    // Calcular el número óptimo de productos para mostrar basado en el tamaño de pantalla
-    const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    
-    // Determinar cuántas columnas tendremos según el ancho de la pantalla
-    let columnCount = 2; // Móvil por defecto
-    if (windowWidth >= 1280) columnCount = 6;      // xl
-    else if (windowWidth >= 1024) columnCount = 5; // lg
-    else if (windowWidth >= 768) columnCount = 4;  // md
-    else if (windowWidth >= 640) columnCount = 3;  // sm
-    
-    // Calcular cuántas filas necesitamos para llenar la pantalla
-    // Altura aproximada de pantalla dividida por altura de tarjeta (aprox. 300px)
-    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const approximateRowsNeeded = Math.ceil(screenHeight / 300) + 1; // +1 para asegurar que no quede espacio vacío
-    
-    // Calcular cuántos productos necesitamos para llenar la pantalla
-    // Multiplicamos por 2 para considerar diferentes tamaños de tarjetas (algunas son más grandes)
-    const minProductsNeeded = columnCount * approximateRowsNeeded * 2;
-    
-    // Asegurarnos de tener suficientes productos para llenar la pantalla
-    const displayLimit = Math.max(minProductsNeeded, limit);
-    
-    if (products.length >= displayLimit) {
-      // Si tenemos suficientes productos, tomamos los necesarios
-      displayProducts = products.slice(0, displayLimit);
+    // Estimate how many rows fit in the container height
+    const estimatedRows = Math.max(1, Math.ceil(containerHeight / APPROX_ROW_HEIGHT));
+
+    // Estimate cells needed to fill these rows densely
+    // Add a buffer (e.g., * 1.5) because 'dense' packing + varied sizes needs more items
+    const estimatedCellsToFill = Math.ceil(columnCount * estimatedRows * 1.5);
+
+    // Ensure we have at least 'limit' items if limit is larger
+    const targetItemCount = Math.max(limit, estimatedCellsToFill);
+
+    if (products.length >= targetItemCount) {
+      displayProducts = products.slice(0, targetItemCount);
     } else {
-      // Si no tenemos suficientes, repetimos los productos para llenar todo el espacio
-      const repeatCount = Math.ceil(displayLimit / products.length);
-      
-      for (let i = 0; i < repeatCount; i++) {
-        displayProducts = [...displayProducts, ...products];
-      }
-      
-      // Limitamos al número calculado para llenar la pantalla
-      displayProducts = displayProducts.slice(0, displayLimit);
+      const repeatCount = Math.ceil(targetItemCount / products.length);
+      displayProducts = Array.from({ length: repeatCount })
+                           .flatMap(() => products)
+                           .slice(0, targetItemCount);
     }
   }
 
-  // --- Renderizado ---
+  // --- Rendering ---
   if (loading) {
+     // Skeleton respects container height
+     const skelCols = `grid-cols-${columnCount}`;
      return (
       <section className="w-full bg-gray-100">
-        {/* Add max-height and overflow-hidden to the grid container for height control */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 auto-rows-[minmax(180px,_auto)] gap-0 max-h-[85vh] overflow-hidden"> {/* Adjusted minmax, added max-h and overflow */}
-          {Array.from({ length: limit }).map((_, index) => {
-             const layout = getLayoutForIndex(index);
-             // Only need to adjust col-span based on the simplified layout
-             const spanClass = layout === 'wide' ? 'col-span-2' : 'col-span-1';
-             // All items are row-span-1 now
-             const rowSpanClass = 'row-span-1';
-             // Determine aspect ratio for skeleton shape
-             const aspectClass = layout === 'standard' ? 'aspect-square' : 'aspect-video';
-
-             return (
-                <div key={index} className={`${spanClass} ${rowSpanClass}`}>
-                  {/* Make SkeletonLoader fill the container */}
-                  <SkeletonLoader className={`w-full h-full ${aspectClass}`} />
-                </div>
-             );
-           })}
+        <div
+          className={`grid ${skelCols} auto-rows-[minmax(180px,_auto)] gap-0`}
+          style={{ maxHeight: `${containerHeight}px`, minHeight: '300px', overflow: 'hidden' }}
+        >
+          {Array.from({ length: Math.max(limit, columnCount * 2) }).map((_, index) => (
+            <div key={index} className="aspect-square col-span-1 row-span-1">
+              <SkeletonLoader className="w-full h-full" />
+            </div>
+          ))}
         </div>
       </section>
     );
@@ -184,56 +152,24 @@ const PanelCards = ({ products: initialProducts, limit = 18, tag = 'Destacado' }
 
   return (
     <section className="w-full bg-white">
-      {/* Grid con diseño mejorado y altura limitada */}
-      <div 
-        className="product-grid" 
-        style={{ 
-          maxHeight: '90vh', /* Limitar la altura al 90% del viewport height */
-          minHeight: '400px', /* Altura mínima para evitar problemas en pantallas pequeñas */
-          overflowY: 'hidden' /* Ocultar lo que exceda la altura máxima */
+      {/* Apply product-grid class AND inline styles for height/overflow */}
+      <div
+        className="product-grid"
+        style={{
+          maxHeight: `${containerHeight}px`, // Use dynamic height
+          minHeight: '400px', // Ensure minimum reasonable height
+          overflow: 'hidden' // Hide content that exceeds maxHeight
         }}
       >
-        {/* Usamos los productos con un límite específico para mejor control del diseño */}
-        {(() => {
-          // Calculamos cuántas tarjetas necesitamos mostrar para rellenar correctamente el grid
-          const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-          let columnCount = 2; // Móvil por defecto
-          if (windowWidth >= 1280) columnCount = 6;      // xl
-          else if (windowWidth >= 1024) columnCount = 5; // lg
-          else if (windowWidth >= 768) columnCount = 4;  // md
-          else if (windowWidth >= 640) columnCount = 3;  // sm
-          
-          // Calculamos el número exacto de productos para crear filas completas
-          // Considerando que algunas tarjetas son wide (span 2), esto es aproximado
-          const rowsToShow = 2; // Mostramos solo 2-3 filas para mantener altura controlada
-          
-          // Este cálculo es aproximado: necesitamos más productos de los que cabrían en filas perfectas
-          // porque algunos son wide y ocupan más espacio
-          const productsToShow = Math.min(columnCount * rowsToShow * 1.5, displayProducts.length);
-          
-          return displayProducts.slice(0, productsToShow).map((product, index) => {
+        {displayProducts.map((product, index) => {
             const actualProductId = product._id || product.id;
             const uniqueKey = `${actualProductId}-${index}`;
             const isDimmed = hoveredProductId !== null && hoveredProductId !== actualProductId;
-            
-            // Optimizamos el layout de acuerdo a la posición en el grid
-            // para asegurarnos de no dejar espacios al final
-            let layout;
-            
-            // Para las últimas posiciones, favorecemos los layouts que completan mejor el grid
-            const isLastRow = index >= (productsToShow - columnCount);
-            if (isLastRow) {
-              // En la última fila usamos solo standard para evitar problemas de overflow
-              layout = 'standard';
-            } else {
-              layout = getLayoutForIndex(index);
-            }
-            
-            // Aplicamos las clases según el layout para el contenedor adecuado
-            const productClass = layout === 'standard' ? '' : 
-                                layout === 'wide' ? 'product-wide' : 
-                                layout === 'tall' ? 'product-tall' : 
-                                'product-large';
+            const layout = getLayoutForIndex(index, displayProducts.length);
+            const productClass = layout === 'standard' ? '' :
+                                 layout === 'wide' ? 'product-wide' :
+                                 layout === 'tall' ? 'product-tall' :
+                                 layout === 'large' ? 'product-large' : '';
 
             return (
               <div key={uniqueKey} className={`${productClass}`}>
@@ -247,43 +183,8 @@ const PanelCards = ({ products: initialProducts, limit = 18, tag = 'Destacado' }
                 />
               </div>
             );
-          });
-        })()}
-        
-        {/* Elementos de relleno optimizados para completar perfectamente el grid */}
-        {(() => {
-          // Detectamos las dimensiones actuales de la pantalla
-          const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-          let columnCount = 2; // Móvil por defecto
-          if (windowWidth >= 1440) columnCount = 8;      // xl
-          else if (windowWidth >= 1280) columnCount = 6;      // xl
-          else if (windowWidth >= 1024) columnCount = 5; // lg
-          else if (windowWidth >= 768) columnCount = 4;  // md
-          else if (windowWidth >= 640) columnCount = 3;  // sm
-          
-          // Creamos fillers solo si son necesarios para completar la última fila
-          // o si hay muy pocos productos
-          const productsShown = Math.min(columnCount * 3, displayProducts.length);
-          const remainingSlots = columnCount - (productsShown % columnCount);
-          
-          // Solo añadimos fillers si realmente son necesarios para completar la última fila
-          if (remainingSlots === columnCount) return null; // No necesitamos fillers
-          
-          return Array.from({ length: remainingSlots  + 10 }).map((_, i) => {
-            // Todos los fillers son de tamaño estándar para evitar problemas de layout
-            return (
-              <div 
-                key={`filler-${i}`}
-                className="bg-white"
-                style={{ 
-                  height: '100%',
-                  backgroundImage: `linear-gradient(${Math.floor(Math.random() * 360)}deg, #f9fafb, #ffffff)`,
-                  opacity: 0.05 // Muy sutil, casi invisible
-                }}
-              />
-            );
-          });
-        })()}
+          })}
+        {/* No filler elements */}
       </div>
     </section>
   );
