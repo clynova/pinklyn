@@ -23,10 +23,15 @@ const PanelCards = ({ products: initialProducts, limit = 8 }) => {
       try {
         setLoading(true);
         const response = await getProductsByTags('Destacado', limit);
-        console.log(response)
         
         if (response.success) {
-          setProducts(response.productos || []);
+          // Verificamos tanto productos como products para mayor compatibilidad
+          const productosData = response.productos || response.products || [];
+          setProducts(productosData);
+          
+          if (productosData.length === 0) {
+            console.warn('La respuesta no contiene productos');
+          }
         } else {
           console.error('Error al obtener productos destacados:', response.msg);
           setError('No se pudieron cargar los productos destacados');
@@ -58,7 +63,7 @@ const PanelCards = ({ products: initialProducts, limit = 8 }) => {
 
   return (
     <section className="w-full">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="product-grid">
         {products && products.map((product, index) => (
           <PanelProductCard 
             key={product.id || product._id || index} 

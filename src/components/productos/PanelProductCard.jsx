@@ -7,9 +7,10 @@ import { FaHeart, FaGift, FaShareAlt } from 'react-icons/fa';
  * 
  * @param {Object} props - Propiedades del componente
  * @param {Object} props.product - Datos del producto a mostrar
+ * @param {number} props.index - Índice del producto en la lista para animación
  * @returns {JSX.Element} - Componente de tarjeta de producto
  */
-const PanelProductCard = ({ product }) => {
+const PanelProductCard = ({ product, index = 0 }) => {
   if (!product) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -22,18 +23,32 @@ const PanelProductCard = ({ product }) => {
   }
 
   // Obtener la variante predeterminada o la primera disponible
-  const variantePredeterminada = product.variantes?.find(v => v.esPredeterminada) || product.variantes?.[0];
+  const variantePredeterminada = product.variantePredeterminada || 
+                               product.variantes?.find(v => v.esPredeterminada) || 
+                               product.variantes?.[0];
   
-  // Obtener precio y descuento de la variante predeterminada si existe, sino usar los valores del producto directamente
-  const price = variantePredeterminada?.precio || product.price;
-  const originalPrice = variantePredeterminada?.precioOriginal || product.originalPrice;
-  const stock = variantePredeterminada?.stock;
+  // Obtener precio y descuento
+  const price = variantePredeterminada?.precio || product.precio || product.price || 0;
   
-  // Verificar si hay descuento
-  const hasDiscount = originalPrice !== undefined && originalPrice > price;
-  const discountPercentage = hasDiscount 
-    ? Math.round(100 - (price / originalPrice * 100)) 
-    : 0;
+  // Calcular el precio original basado en el descuento
+  // Si hay descuento en la variante, calculamos el precio original
+  let originalPrice;
+  const descuento = variantePredeterminada?.descuento || 0;
+  
+  if (descuento > 0) {
+    // Si hay descuento, calculamos el precio original
+    originalPrice = price / (1 - descuento/100);
+  } else {
+    originalPrice = product.precioOriginal || product.originalPrice;
+  }
+  
+  // Usar stockDisponible en lugar de stock ya que es el nombre correcto de la propiedad
+  const stock = variantePredeterminada?.stockDisponible;
+  
+  // Verificar si hay descuento (cualquier descuento mayor a 0 o si hay un precio original explícito)
+  const hasDiscount = (descuento > 0) || (originalPrice !== undefined && originalPrice > price);
+  const discountPercentage = descuento || 
+                            (hasDiscount && originalPrice ? Math.round(100 - (price / originalPrice * 100)) : 0);
 
   // Obtener imagen principal
   const imagenPrincipal = product.multimedia?.imagenes?.find(img => img.esPrincipal)?.url || 
@@ -43,84 +58,70 @@ const PanelProductCard = ({ product }) => {
   // Obtener nombre del producto
   const nombre = product.nombre || product.name;
 
+  // Determinar el tamaño basado en las propiedades del producto o usar 'standard' por defecto
+  const size = product.size || 'standard';
+
+  // Clases para diferentes tamaños de tarjeta
+  const sizeClasses = {
+    standard: '',
+    wide: 'product-wide',
+    tall: 'product-tall',
+    large: 'product-large',
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      <div className="relative">
-        <Link href={`/admin/productos/${product._id || product.id}`}>
-          <div className="overflow-hidden">
-            <img 
-              src={imagenPrincipal}
-              alt={nombre}
-              className="w-full h-48 object-cover transform hover:scale-105 transition-transform duration-300"
-            />
-          </div>
-        </Link>
-        
+    <Link 
+      href={`/admin/productos/${product._id || product.id}`} 
+      className={`
+        group relative overflow-hidden rounded-xl bg-background shadow-md transition-all duration-300 hover:shadow-lg
+        animate-fadeIn ${sizeClasses[size] || ''}
+      `}
+      style={{ 
+        animationDelay: `${index * 0.1}s`,
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      
+      <div 
+        className="h-full w-full bg-cover bg-center"
+        style={{ backgroundImage: `url(${imagenPrincipal})` }}
+      >
+        {console.log(hasDiscount)}
         {hasDiscount && (
-          <span className="absolute top-2 right-2 bg-primary text-white px-2 py-1 rounded-md text-sm font-medium">
-            {discountPercentage}% OFF
+          <span className="absolute right-3 top-3 bg-primary text-white px-2 py-1 rounded-md text-sm font-medium">
+            -{discountPercentage}%
           </span>
         )}
         
         {(stock !== undefined && stock <= 0) && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-medium">
+          <span className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-medium">
             Agotado
           </span>
         )}
-      </div>
-      
-      <div className="p-4">
-        <h3 className="text-lg font-semibold mb-2 truncate">{nombre}</h3>
         
-        <div className="flex items-center gap-2 mb-3">
-          {hasDiscount ? (
-            <>
-              <span className="text-xl font-bold text-primary">${price.toFixed(2)}</span>
-              <span className="text-sm text-muted-foreground line-through">${originalPrice.toFixed(2)}</span>
-            </>
-          ) : (
-            <span className="text-xl font-bold">${price.toFixed(2)}</span>
-          )}
-        </div>
-        
-        {/* Mostrar etiqueta de stock si está disponible */}
-        {variantePredeterminada?.stock > 0 && (
-          <div className="text-sm text-gray-600 mb-3">
-            Stock: {variantePredeterminada.stock} {variantePredeterminada.unidad || 'unidades'}
-          </div>
-        )}
-        
-        {/* Mostrar descripción corta si está disponible */}
-        {product.descripcion?.corta && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-            {product.descripcion.corta}
-          </p>
-        )}
-        
-        <div className="flex justify-between mt-4">
-          <Link 
-            href={`/admin/productos/editar/${product._id || product.id}`}
-            className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Editar
-          </Link>
+        <div className="absolute bottom-0 w-full p-4 text-left transition-transform duration-300 group-hover:translate-y-[-4px]">
+          <h3 className="text-lg font-medium text-white drop-shadow-md mb-1 line-clamp-2">{nombre}</h3>
           
-          <div className="flex gap-2">
-            {product.destacado && (
-              <span className="p-2 rounded-full bg-yellow-100 text-yellow-800" title="Producto destacado">
-                ⭐
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold text-white drop-shadow-md">
+              ${price.toFixed(2)}
+            </span>
+            
+            {hasDiscount && (
+              <span className="text-sm text-white/70 line-through">
+                ${originalPrice.toFixed(2)}
               </span>
             )}
-            <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-              <FaHeart className="text-red-400" size={16} />
-            </button>
-            <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-              <FaShareAlt className="text-blue-500" size={16} />
-            </button>
           </div>
+          
+          {product.destacado && (
+            <div className="absolute top-3 right-3 p-2 rounded-full bg-yellow-100 text-yellow-800" title="Producto destacado">
+              ⭐
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
