@@ -6,16 +6,26 @@ import Link from 'next/link';
  *
  * @param {Object} props - Propiedades del componente
  * @param {Object} props.product - Datos del producto a mostrar
+ * @param {string} props.productId - ID único del producto
  * @param {'standard' | 'wide' | 'tall' | 'large'} props.layout - Define el tamaño y forma de la card en el grid
+ * @param {boolean} props.isDimmed - Indica si la tarjeta debe aparecer difuminada
+ * @param {Function} props.onMouseEnter - Función a llamar cuando el mouse entra
+ * @param {Function} props.onMouseLeave - Función a llamar cuando el mouse sale
  * @returns {JSX.Element} - Componente de tarjeta de producto
  */
-const PanelProductCard = ({ product, layout = 'standard' }) => {
+const PanelProductCard = ({
+  product,
+  productId,
+  layout = 'standard',
+  isDimmed,
+  onMouseEnter,
+  onMouseLeave
+}) => {
   if (!product) {
-    // Fallback en caso de que no haya producto, aunque PanelCards debería manejar esto.
     return null;
   }
 
-  // --- Extracción de datos del producto ---
+  // --- Extracción de datos del producto (sin cambios) ---
   const variantePredeterminada = product.variantePredeterminada ||
                                product.variantes?.find(v => v.esPredeterminada) ||
                                product.variantes?.[0];
@@ -37,33 +47,37 @@ const PanelProductCard = ({ product, layout = 'standard' }) => {
 
   const imagenPrincipal = product.multimedia?.imagenes?.find(img => img.esPrincipal)?.url ||
                          product.multimedia?.imagenes?.[0]?.url ||
-                         product.image || // Fallback a image si existe
-                         '/images/placeholder.svg'; // Placeholder si no hay imagen
+                         product.image ||
+                         '/images/placeholder.svg';
 
   const nombre = product.nombre || product.name || 'Producto sin nombre';
-  const productId = product._id || product.id;
 
-  // --- Clases de Layout ---
-  // Define cómo se expande la card en el grid de PanelCards
+  // --- Clases de Layout (sin cambios) ---
   const layoutClasses = {
-    standard: 'col-span-1 row-span-1 aspect-square', // Cuadrada
-    wide: 'col-span-2 row-span-1 aspect-video',    // Rectangular ancha
-    tall: 'col-span-1 row-span-2 aspect-[9/16]',  // Rectangular alta
-    large: 'col-span-2 row-span-2 aspect-square', // Cuadrada grande
+    standard: 'col-span-1 row-span-1 aspect-square',
+    wide: 'col-span-2 row-span-1 aspect-video',
+    tall: 'col-span-1 row-span-2 aspect-[9/16]',
+    large: 'col-span-2 row-span-2 aspect-square',
   };
 
   return (
     <Link
-      href={`/productos/${productId}`} // Redirige a la página de detalles del producto
+      href={`/productos/${productId}`}
+      onMouseEnter={() => onMouseEnter(productId)} // Llama al handler del parent con el ID
+      onMouseLeave={onMouseLeave} // Llama al handler del parent
       className={`
-        group relative overflow-hidden rounded-none bg-gray-200  /* Sin bordes redondeados y sin gap */
-        transition-transform duration-500 ease-in-out transform hover:scale-105 /* Efecto sutil al hacer hover */
-        ${layoutClasses[layout] || layoutClasses.standard} /* Aplica clases de tamaño */
+        group relative overflow-hidden rounded-none bg-gray-200
+        transition-all duration-300 ease-in-out /* Transición para todo */
+        ${layoutClasses[layout] || layoutClasses.standard}
+        ${isDimmed
+          ? 'filter blur-sm opacity-50 scale-95' // Estilos cuando está difuminado (blur, menos opacidad, ligero encogimiento)
+          : 'filter-none opacity-100 scale-100 hover:scale-105' // Estilos normales + efecto hover scale solo si no está difuminado
+        }
       `}
     >
-      {/* Imagen de fondo */}
+      {/* Imagen de fondo (con su propio hover effect independiente) */}
       <div
-        className="absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-110" // Efecto de zoom suave en la imagen
+        className="absolute inset-0 w-full h-full bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-110"
         style={{ backgroundImage: `url(${imagenPrincipal})` }}
         aria-label={nombre}
       />
@@ -88,7 +102,7 @@ const PanelProductCard = ({ product, layout = 'standard' }) => {
         </div>
       </div>
 
-      {/* Badge de Descuento (opcional) */}
+      {/* Badge de Descuento */}
       {hasDiscount && (
         <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-md">
           -{discountPercentage}%
