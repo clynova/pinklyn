@@ -35,6 +35,17 @@ class ProductController {
                 filtro.nombre = { $regex: searchQuery, $options: 'i' };
             }
 
+            // Filtro por tags (etiquetas) - Soporta múltiples tags separados por coma
+            if (queryParams.has('tags')) {
+                const tagsParam = queryParams.get('tags');
+                // Dividir los tags por coma y eliminar espacios en blanco
+                const tagsList = tagsParam.split(',').map(tag => tag.trim()).filter(tag => tag);
+                // Si hay al menos un tag, filtrar por ellos
+                if (tagsList.length > 0) {
+                    filtro.tags = { $in: tagsList };
+                }
+            }       
+
             // Filtro por precio mínimo
             if (queryParams.has('precioMin')) {
                 filtro.precio = { ...filtro.precio || {}, $gte: parseFloat(queryParams.get('precioMin')) };

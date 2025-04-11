@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import CarouselWrapper from "../../components/productos/CarouselWrapper";
 import BestSellersCarousel from "../../components/productos/BestSellersCarousel";
+import PanelCards from "@/components/productos/PanelCards";
 
 export default function Home() {
   return (
@@ -118,11 +119,29 @@ export default function Home() {
               Ver todo el catálogo →
             </a>
           </div>
-        
+
           {/* Carrusel de productos destacados */}
           <BestSellersCarousel />
         </div>
       </section>
+
+      {/* Gift Gallery Vista Section */}
+      <main className="flex-1">
+        <section className="bg-accent py-12 md:py-20">
+          <div className="container mx-auto px-4 text-center">
+            <h1 className="text-3xl md:text-5xl font-bold mb-4">Gift Gallery Vista</h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Explora nuestra selección de regalos únicos y especiales para cada ocasión.
+              Encuentra el detalle perfecto para sorprender a esa persona especial.
+            </p>
+          </div>
+        </section>
+
+        <section className="container mx-auto px-4 py-12 md:py-16">
+          <h2 className="text-2xl md:text-3xl font-bold mb-8">Productos Destacados</h2>
+          <PanelCards limit={8} />
+        </section>
+      </main>
 
     </div>
   );

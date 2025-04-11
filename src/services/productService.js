@@ -177,7 +177,7 @@
 
 export async function getProductsByTags(tag, limit = 8) {
   try {
-    const response = await fetch(`/api/productos?tag=${tag}&limit=${limit}`, {
+    const response = await fetch(`/api/productos?tags=${tag}&limit=${limit}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -185,8 +185,6 @@ export async function getProductsByTags(tag, limit = 8) {
     });
 
     const data = await response.json();
-
-    console.log('Response de getAllProducts:', data);
 
     if (response.ok) {
       return {

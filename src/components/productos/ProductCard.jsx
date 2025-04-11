@@ -256,8 +256,6 @@ const ProductCard = ({ product, children }) => {
             
             {/* Spacer */}
             <div className="flex-grow min-h-2"></div>
-
- {console.log('ProductCard renderizado', product)}
             {/* Price and CTA */}
             <div className="mt-auto">
               {/* Price */}
