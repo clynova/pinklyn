@@ -1,9 +1,34 @@
 import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
-const CategoriaProducto = ['ARTE', 'JOYERIA', 'DECORACION', 'TEXTILES', 'ACCESORIOS', 'OTRO'];
-const TipoPersonalizacion = ['NOMBRE', 'MENSAJE', 'DISENO', 'NINGUNO'];
-const TipoProducto = ['ARTESANAL', 'GENERICO'];
+const CategoriaProducto = [
+    'ARTE',            // Pinturas, esculturas, grabados, ilustraciones.
+    'JOYERIA',         // Collares, pulseras, anillos, pendientes.
+    'DECORACION',      // Macetas, velas decorativas, cojines, cuadros.
+    'TEXTILES',        // Mantas, bufandas, toallas bordadas, ropa personalizada.
+    'ACCESORIOS',      // Bolsos, carteras, cinturones, llaveros.
+    'ALIMENTOS',       // Chocolates, vinos, cervezas artesanales, dulces gourmet.
+    'INFANTIL',        // Juguetes artesanales, libros personalizados, ropa infantil.
+    'BIENESTAR',       // Velas aromáticas, difusores, jabones naturales.
+    'PAPELERIA',       // Libretas, tarjetas personalizadas, marcapáginas.
+    'PLANTAS',         // Suculentas, flores secas, plantas decorativas.
+    'TECNOLOGIA',      // Fundas personalizadas, cargadores portátiles decorativos.
+    'OTRO'             // Para productos que no encajen en las demás categorías.
+];
+const TipoPersonalizacion = [
+    'NOMBRE',          // Grabado de nombres (por ejemplo, en collares o tazas).
+    'MENSAJE',         // Mensajes personalizados (por ejemplo, en tarjetas o lienzos).
+    'DISENO',          // Diseños únicos creados por el cliente (por ejemplo, en textiles o joyería).
+    'FOTOS',           // Incorporación de fotos (por ejemplo, en tazas, lienzos o álbumes).
+    'FECHA',           // Inclusión de fechas especiales (por ejemplo, en joyas o decoración).
+    'COLOR',           // Elección de colores personalizados (por ejemplo, en textiles o accesorios).
+    'NINGUNO'          // Productos sin personalización.
+];
+const TipoProducto = [
+    'ARTESANAL',       // Hecho completamente a mano por un artesano.
+    'GENERICO',        // Productos producidos en masa sin un artesano específico.
+    'SEMIARTESANAL'    // Mezcla de producción artesanal y procesos industriales.
+];
 
 // Base Product Schema
 const EsquemaProductoBase = new Schema({
@@ -133,6 +158,72 @@ const EsquemaProductoBase = new Schema({
 }, {
     timestamps: { createdAt: 'fechaCreacion', updatedAt: 'fechaActualizacion' },
     discriminatorKey: 'tipoProducto'
+});
+
+// Virtual para seleccionar automáticamente una variante predeterminada
+EsquemaProductoBase.virtual('variantePredeterminada').get(function () {
+    // Primero buscamos una variante marcada explícitamente como predeterminada
+    let predeterminada = this.variantes.find(variante => variante.esPredeterminada);
+
+    // Si no hay ninguna marcada como predeterminada, tomamos la primera disponible con stock
+    if (!predeterminada) {
+        predeterminada = this.variantes.find(variante => variante.stockDisponible > 0);
+    }
+
+    // Si tampoco hay con stock, simplemente tomamos la primera
+    if (!predeterminada && this.variantes.length > 0) {
+        predeterminada = this.variantes[0];
+    }
+
+    return predeterminada || null;
+});
+
+
+
+
+// Virtual que calcula el precio con descuento para cada variante
+EsquemaProductoBase.virtual('variantesConPrecioFinal').get(function () {
+    return this.variantes.map(variante => {
+        const precioConDescuento = variante.descuento > 0
+            ? variante.precio - (variante.precio * variante.descuento / 100)
+            : variante.precio;
+
+        return {
+            ...variante.toObject(),
+            precioFinal: parseFloat(precioConDescuento.toFixed(2)),
+            tieneDescuento: variante.descuento > 0
+        };
+    });
+});
+
+// Método para obtener el precio final de una variante específica por su ID
+EsquemaProductoBase.methods.calcularPrecioFinal = function (varianteId) {
+    const variante = this.variantes.id(varianteId);
+    if (!variante) return null;
+
+    const precioConDescuento = variante.descuento > 0
+        ? variante.precio - (variante.precio * variante.descuento / 100)
+        : variante.precio;
+
+    return parseFloat(precioConDescuento.toFixed(2));
+};
+
+// Pre-save hook para garantizar que solo una variante sea la predeterminada
+EsquemaProductoBase.pre('save', function (next) {
+    // Si hay al menos una variante marcada como predeterminada, nos aseguramos que sea solo una
+    const predeterminadas = this.variantes.filter(v => v.esPredeterminada);
+
+    if (predeterminadas.length > 1) {
+        // Si hay más de una, dejamos solo la primera como predeterminada
+        for (let i = 1; i < predeterminadas.length; i++) {
+            predeterminadas[i].esPredeterminada = false;
+        }
+    } else if (this.variantes.length > 0 && predeterminadas.length === 0) {
+        // Si no hay ninguna predeterminada pero hay variantes, establecemos la primera como predeterminada
+        this.variantes[0].esPredeterminada = true;
+    }
+
+    next();
 });
 
 const Product = mongoose.models.Product || mongoose.model('Product', EsquemaProductoBase);

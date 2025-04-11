@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import CarouselWrapper from "../../components/productos/CarouselWrapper";
+import BestSellersCarousel from "../../components/productos/BestSellersCarousel";
 
 export default function Home() {
   return (
@@ -36,7 +38,7 @@ export default function Home() {
                 <div className="absolute -top-10 -left-10 w-72 h-72 bg-pink-100 dark:bg-pink-900/30 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
                 <div className="absolute -bottom-10 -right-10 w-72 h-72 bg-purple-100 dark:bg-purple-900/30 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
                 <div className="absolute inset-0 rounded-lg overflow-hidden border-2 border-pink-500/20 shadow-xl">
-                  <Image 
+                  <Image
                     src="/images/logo.svg"
                     alt="Pinklyn"
                     fill
@@ -99,6 +101,29 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Best Sellers Section */}
+      <section className="w-full bg-gray-50 dark:bg-gray-800/50 py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Productos Destacados
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl">
+                Explora nuestra selección premium de cortes argentinos, pollo fresco y aceite de la mejor calidad
+              </p>
+            </div>
+            <a href="/productos" className="mt-4 md:mt-0 text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+              Ver todo el catálogo →
+            </a>
+          </div>
+        
+          {/* Carrusel de productos destacados */}
+          <BestSellersCarousel />
+        </div>
+      </section>
+
     </div>
   );
 }
